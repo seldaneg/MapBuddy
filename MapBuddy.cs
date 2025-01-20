@@ -55,6 +55,11 @@ namespace MapBuddy
         private const string PRECURSOR_PATH = "Metadata/Items/TowerAugment/";  
 		
 		
+		private const int MIN_INPUT_INTERVAL = 50; // ms
+		private DateTime _lastInputTime = DateTime.MinValue;
+		private bool _isTransitioning = false;
+		
+		
 		
 		private Dictionary<string, int> GetMaxStackSizes()
 		{
@@ -402,43 +407,78 @@ namespace MapBuddy
 
         private void ProcessNormalItems(List<CraftableItem> items)
 		{
+			if (!Settings.AlchemyNormalItems.Value && !Settings.TransmuteWaystones.Value && !Settings.TransmutePrecursorTablets.Value)
+			{
+				LogDebug("All normal item processing is disabled in settings");
+				return;
+			}
+
 			foreach (var item in items)
 			{
+				// Handle Precursor Tablets
 				if (item.IsPrecursorTablet)
 				{
+					if (!Settings.TransmutePrecursorTablets.Value)
+					{
+						LogDebug($"Skipping precursor tablet: transmute setting disabled");
+						continue;
+					}
+
 					if (TryGetCurrency(TRANSMUTATION_PATH, out var transmute))
+					{
 						ApplyCurrency(transmute, item.Item);
 						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
 						
-						// Now immediately apply Augmentation
-						if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
+						// Now immediately apply Augmentation if enabled
+						if (Settings.AugmentMagicItems.Value && TryGetCurrency(AUGMENTATION_PATH, out var augment))
 						{
 							ApplyCurrency(augment, item.Item);
 							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
 						}
-						
+					}
 				}
-				else // Apply alchemy to everything else (including Waystones)
+				// Handle Waystones
+				else if (item.IsWaystone)
 				{
-					
-					var baseComponent = item.Item.Item.GetComponent<Base>();  // Note: item.Item.Item to get to Entity
+					if (!Settings.TransmuteWaystones.Value)
+					{
+						LogDebug($"Skipping waystone: transmute setting disabled");
+						continue;
+					}
+
+					if (TryGetCurrency(ALCHEMY_PATH, out var alchemy))
+					{
+						ApplyCurrency(alchemy, item.Item);
+						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
+					}
+				}
+				// Handle other normal items
+				else
+				{
+					if (!Settings.AlchemyNormalItems.Value)
+					{
+						LogDebug($"Skipping normal item: alchemy setting disabled");
+						continue;
+					}
+
+					var baseComponent = item.Item.Item.GetComponent<Base>();
 					var baseName = baseComponent?.Name ?? "";
-					
-					// Debug log to see what we're dealing with
-					LogDebug($"Item base name: {baseName}, Path: {item.Item.Item.Path}");
-					
-					if (baseName.Contains("Stellar Amulet") || 
+					LogDebug($"Processing normal item: {baseName}");
+
+					// Skip specific base types
+					if (baseName.Contains("Stellar") || 
 						baseName.Contains("Heavy Belt") || 
-						baseName.Contains("Attuned Wand"))
+						baseName.Contains("Attuned"))
 					{
 						LogDebug($"Skipping alchemy on filtered base type: {baseName}");
 						continue;
 					}
-					
-					
+
 					if (TryGetCurrency(ALCHEMY_PATH, out var alchemy))
+					{
 						ApplyCurrency(alchemy, item.Item);
 						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
+					}
 				}
 			}
 		}
@@ -447,6 +487,13 @@ namespace MapBuddy
 		
 		private void ProcessMagicItems(List<CraftableItem> items)
 		{
+			// Early exit if all relevant settings are disabled
+			if (!Settings.AugmentMagicItems.Value && !Settings.RegalMagicMaps.Value)
+			{
+				LogDebug("All magic item processing is disabled in settings");
+				return;
+			}
+
 			var processedIds = new HashSet<string>();
 			
 			// Get all magic maps and precursor tablets
@@ -459,36 +506,40 @@ namespace MapBuddy
 				processedIds.Add(itemId);
 
 				// Debug log the item details
-				LogDebug($"Processing item - Path: {item.Item.Item.Path}, IsPrecursor: {item.IsPrecursorTablet}, IsMap: {item.IsMap}, AffixCount: {item.AffixCount}");
+				LogDebug($"Processing item - Path: {item.Item.Item.Path}, IsPrecursor: {item.IsPrecursorTablet}, IsMap: {item.IsMap}");
 				
 				// Get explicit count of mods for better accuracy
 				var mods = item.Item.Item.GetComponent<Mods>();
 				var explicitCount = mods.ExplicitMods.Count();
 				LogDebug($"Explicit mod count: {explicitCount}");
 
+				// Handle items with 1 explicit mod
 				if (explicitCount == 1)
 				{
-					LogDebug("Found item with 1 explicit mod, applying Augmentation");
-					if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
+					// Only augment if setting is enabled
+					if (Settings.AugmentMagicItems.Value)
 					{
-						ApplyCurrency(augment, item.Item);
-						Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-						
-						if (!item.IsPrecursorTablet) // Only apply Regal to Maps
-						{						
+						LogDebug("Found item with 1 explicit mod, applying Augmentation");
+						if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
+						{
+							ApplyCurrency(augment, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
 							
-							LogDebug("Map has 2 explicit mods, applying Regal");
-							if (TryGetCurrency(REGAL_PATH, out var regal))
-							{
-								ApplyCurrency(regal, item.Item);
-								Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+							// Only apply Regal to Maps if setting is enabled
+							if (!item.IsPrecursorTablet && Settings.RegalMagicMaps.Value)
+							{                        
+								LogDebug("Map has 2 explicit mods, applying Regal");
+								if (TryGetCurrency(REGAL_PATH, out var regal))
+								{
+									ApplyCurrency(regal, item.Item);
+									Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+								}
 							}
-							
-							
 						}
 					}
 				}
-				else if (explicitCount == 2 && !item.IsPrecursorTablet) // Only apply Regal to Maps with 2 mods
+				// Handle items with 2 mods
+				else if (explicitCount == 2 && !item.IsPrecursorTablet && Settings.RegalMagicMaps.Value)
 				{
 					LogDebug("Applying Regal Orb to map with 2 explicit mods");
 					if (TryGetCurrency(REGAL_PATH, out var regal))
@@ -609,7 +660,6 @@ namespace MapBuddy
 			var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
 			var stashElement = GameController.IngameState.IngameUi.StashElement;
 			
-			// First take one stack of each currency type
 			foreach (var kvp in GetMaxStackSizes())
 			{
 				var currencyPath = kvp.Key;
@@ -618,14 +668,30 @@ namespace MapBuddy
 				// Skip if stack size is set to 0 in settings
 				if (maxStack == 0)
 				{
-					LogDebug($"Skipping {currencyPath} (disabled in settings)");
+					LogDebug($"Skipping {currencyPath} (disabled in settings: stack size 0)");
 					continue;
+				}
+
+				var currencyInInventory = GetItemWithBaseName(currencyPath, 
+					inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems);
+					
+				// Skip if we already have enough of this currency
+				if (currencyInInventory != null)
+				{
+					var stack = currencyInInventory.Item.GetComponent<Stack>();
+					if (stack != null && stack.Size >= maxStack)
+					{
+						LogDebug($"Skipping {currencyPath} (already have {stack.Size} >= {maxStack})");
+						continue;
+					}
 				}
 
 				var currencyInStash = GetItemWithBaseName(currencyPath, 
 					stashElement.VisibleStash.VisibleInventoryItems);
+					
 				if (currencyInStash != null)
 				{
+					LogDebug($"Taking {currencyPath} from stash (target: {maxStack})");
 					var pos = currencyInStash.GetClientRect().Center;
 					Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
 					Thread.Sleep(Constants.INPUT_DELAY);
@@ -634,12 +700,12 @@ namespace MapBuddy
 					Input.KeyUp(Keys.LControlKey);
 					Thread.Sleep(Constants.CLICK_DELAY);
 					
-					// Wait for and verify the stack was taken
+					// Verification logic
 					int attempts = 0;
 					bool stackFound = false;
-					while (attempts < 10 && !stackFound) // Try up to 10 times
+					while (attempts < 10 && !stackFound)
 					{
-						Thread.Sleep(100); // Short delay between checks
+						Thread.Sleep(100);
 						var freshInventory = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
 						var newStacks = freshInventory.VisibleInventoryItems
 							.Count(x => x.Item.Path.Contains(currencyPath));
