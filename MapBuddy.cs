@@ -468,7 +468,7 @@ namespace MapBuddy
 					// Skip specific base types
 					if (baseName.Contains("Stellar Amulet") || 
 						baseName.Contains("Heavy Belt") || 
-						baseName.Contains("Attuned Wand")) || 
+						baseName.Contains("Attuned Wand") || 
 						baseName.Contains("Sapphire Ring"))
 					{
 						LogDebug($"Skipping alchemy on filtered base type: {baseName}");
