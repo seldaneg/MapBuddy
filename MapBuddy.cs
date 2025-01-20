@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -56,15 +56,17 @@ namespace MapBuddy
 		
 		
 		
-		private readonly Dictionary<string, int> MaxStackSizes = new()
+		private Dictionary<string, int> GetMaxStackSizes()
 		{
-			{ SCROLL_PATH, 40 },
-			{ ALCHEMY_PATH, 20 },
-			{ TRANSMUTATION_PATH, 40 },
-			{ AUGMENTATION_PATH, 30 },
-			{ REGAL_PATH, 20 }
-		};
-		
+			return new Dictionary<string, int>
+			{
+				{ SCROLL_PATH, Settings.ScrollStackSize.Value },
+				{ ALCHEMY_PATH, Settings.AlchemyStackSize.Value },
+				{ TRANSMUTATION_PATH, Settings.TransmutationStackSize.Value },
+				{ AUGMENTATION_PATH, Settings.AugmentationStackSize.Value },
+				{ REGAL_PATH, Settings.RegalStackSize.Value }
+			};
+		}
 		
 
         public override bool Initialise()
@@ -568,10 +570,20 @@ namespace MapBuddy
 		{
 			var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
 			var stashElement = GameController.IngameState.IngameUi.StashElement;
-
+			
 			// First take one stack of each currency type
-			foreach (var currencyPath in MaxStackSizes.Keys)
+			foreach (var kvp in GetMaxStackSizes())
 			{
+				var currencyPath = kvp.Key;
+				var maxStack = kvp.Value;
+				
+				// Skip if stack size is set to 0 in settings
+				if (maxStack == 0)
+				{
+					LogDebug($"Skipping {currencyPath} (disabled in settings)");
+					continue;
+				}
+
 				var currencyInStash = GetItemWithBaseName(currencyPath, 
 					stashElement.VisibleStash.VisibleInventoryItems);
 				if (currencyInStash != null)
@@ -583,7 +595,7 @@ namespace MapBuddy
 					Input.Click(MouseButtons.Left);
 					Input.KeyUp(Keys.LControlKey);
 					Thread.Sleep(Constants.CLICK_DELAY);
-
+					
 					// Wait for and verify the stack was taken
 					int attempts = 0;
 					bool stackFound = false;
@@ -604,46 +616,6 @@ namespace MapBuddy
 					}
 				}
 			}
-
-			// // Then return all currency stacks except rightmost column
-			// LogDebug("\n=== Starting return of currency to stash (except rightmost column) ===");
-			
-			// // Get fresh inventory reference
-			// var playerInventory = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
-			
-			// var matchingStacks = playerInventory.VisibleInventoryItems
-				// .Where(x => MaxStackSizes.Keys.Any(k => x.Item.Path.Contains(k)))
-				// .Where(x => x.GetClientRect().Center.X < playerInventory.GetClientRect().Right - 50)
-				// .ToList();
-
-			// LogDebug($"Found {matchingStacks.Count} currency stacks to return (excluding rightmost column)");
-
-			// foreach (var stack in matchingStacks)
-			// {
-				// var rect = stack.GetClientRect();
-				// LogDebug($"\nReturning stack at position X={rect.Center.X}, Y={rect.Center.Y}: {stack.Item.Path}");
-				
-				// var stackComponent = stack.Item.GetComponent<Stack>();
-				// if (stackComponent == null)
-				// {
-					// LogDebug("Stack component is null, skipping");
-					// continue;
-				// }
-
-				// LogDebug($"Stack size: {stackComponent.Size}");
-				// var pos = rect.Center;
-				// LogDebug($"Click position: X={pos.X}, Y={pos.Y}");
-
-				// Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
-				// Thread.Sleep(Constants.INPUT_DELAY);
-				// Input.KeyDown(Keys.LControlKey);
-				// Input.Click(MouseButtons.Left);
-				// Input.KeyUp(Keys.LControlKey);
-				// Thread.Sleep(Constants.CLICK_DELAY);
-				// LogDebug("Return completed");
-			// }
-
-			// LogDebug("=== Finished returning currency to stash ===\n");
 		}
 
 		private void HandleItemThrow()
