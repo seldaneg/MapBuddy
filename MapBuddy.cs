@@ -420,6 +420,22 @@ namespace MapBuddy
 				}
 				else // Apply alchemy to everything else (including Waystones)
 				{
+					
+					var baseComponent = item.Item.Item.GetComponent<Base>();  // Note: item.Item.Item to get to Entity
+					var baseName = baseComponent?.Name ?? "";
+					
+					// Debug log to see what we're dealing with
+					LogDebug($"Item base name: {baseName}, Path: {item.Item.Item.Path}");
+					
+					if (baseName.Contains("Stellar Amulet") || 
+						baseName.Contains("Heavy Belt") || 
+						baseName.Contains("Attuned Wand"))
+					{
+						LogDebug($"Skipping alchemy on filtered base type: {baseName}");
+						continue;
+					}
+					
+					
 					if (TryGetCurrency(ALCHEMY_PATH, out var alchemy))
 						ApplyCurrency(alchemy, item.Item);
 						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
