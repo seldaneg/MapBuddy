@@ -1,4 +1,4 @@
-﻿using System.Windows.Forms;
+using System.Windows.Forms;
 using ExileCore2.Shared.Attributes;
 using ExileCore2.Shared.Interfaces;
 using ExileCore2.Shared.Nodes;
@@ -36,6 +36,11 @@ namespace MapBuddy
 			// Currency Management
 			AutoFillCurrency = new ToggleNode(true);
 			CurrencyTabName = new TextNode("Currency");
+			ScrollStackSize = new RangeNode<int>(40, 0, 40);      
+			AlchemyStackSize = new RangeNode<int>(20, 0, 20);    
+			TransmutationStackSize = new RangeNode<int>(40, 0, 40); 
+			AugmentationStackSize = new RangeNode<int>(30, 0, 30); 
+			RegalStackSize = new RangeNode<int>(20, 0, 20);     
 
 			// UI Settings
 			ShowDebugWindow = new ToggleNode(false);
@@ -51,7 +56,7 @@ namespace MapBuddy
 		[Menu("Enable")]
 		public ToggleNode Enable { get; set; }
 
-		[Menu("Identification Hotkey")]
+		[Menu("Identification + Crafting + Currency Management Hotkey")]
 		public HotkeyNodeV2 HotKey { get; set; }
 
 		[Menu("Throw Item Hotkey")]
@@ -110,8 +115,23 @@ namespace MapBuddy
 
 		[Menu("Auto-fill Currency from Stash **CAREFUL**", 3001, 3000)]
 		public ToggleNode AutoFillCurrency { get; set; }
+		
+		[Menu("Scroll of Wisdom Stack Size", 3003, 3000)]
+		public RangeNode<int> ScrollStackSize { get; set; }
 
-		[Menu("Currency Tab Name", 3002, 3000)]
+		[Menu("Orb of Alchemy Stack Size", 3004, 3000)]
+		public RangeNode<int> AlchemyStackSize { get; set; }
+
+		[Menu("Orb of Transmutation Stack Size", 3005, 3000)]
+		public RangeNode<int> TransmutationStackSize { get; set; }
+
+		[Menu("Orb of Augmentation Stack Size", 3006, 3000)]
+		public RangeNode<int> AugmentationStackSize { get; set; }
+
+		[Menu("Regal Orb Stack Size", 3007, 3000)]
+		public RangeNode<int> RegalStackSize { get; set; }
+
+		[Menu("Currency Tab Name **THIS FEATURE IS CURRENTLY BROKEN, PLEASE SELECT CURRENCY TAB MANUALLY**", 3002, 3000)]
 		public TextNode CurrencyTabName { get; set; }
 
 		// UI Settings
