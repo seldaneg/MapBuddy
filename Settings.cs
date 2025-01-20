@@ -15,7 +15,7 @@ namespace MapBuddy
 			Enable = new ToggleNode(true);
 			HotKey = new HotkeyNodeV2(Keys.F2);
 			ExtraDelay = new RangeNode<int>(50, 30, 200);
-			ThrowHotkey = new HotkeyNodeV2(Keys.LShiftKey); 
+			ThrowHotkey = new HotkeyNodeV2(Keys.Oemtilde); 
 			
 			// Identification settings
 			IdentifyAll = new ToggleNode(false);
