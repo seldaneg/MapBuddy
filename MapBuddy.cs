@@ -308,8 +308,22 @@ namespace MapBuddy
             {
                 if (!item.Item.HasComponent<Mods>())
                     continue;
+				
 
                 var mods = item.Item.GetComponent<Mods>();
+				
+				var baseItem = item.Item;
+					
+					
+					
+				// Skip corrupted items
+				if (baseItem.GetComponent<Base>().isCorrupted)
+				{
+					LogDebug($"Skipping corrupted item: {baseItem.Path}");
+					continue;
+				}
+					
+				
                 if (mods.Identified)
                     continue;
 
@@ -495,6 +509,14 @@ namespace MapBuddy
 					continue;
 
 				var mods = baseItem.GetComponent<Mods>();
+				
+				// Skip corrupted items
+				if (baseItem.GetComponent<Base>().isCorrupted)
+				{
+					LogDebug($"Skipping corrupted item: {baseItem.Path}");
+					continue;
+				}
+				
 				var path = baseItem.Path;
 				
 				// More specific path checking
@@ -670,7 +692,7 @@ namespace MapBuddy
 					GameController.Window.GetWindowRectangle().Height / 2f
 				);
 				Input.SetCursorPos(screenCenter);
-				Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 2);
 				LogDebug("Moved to screen center");
 				
 				// Drop item
@@ -678,14 +700,14 @@ namespace MapBuddy
 				Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay);
 				LogDebug("Clicked to drop item");
 
-				// If in town or hideout, click the hardcoded Destroy button position
+				// If in town or hideout, click the  Destroy button position
 				var area = GameController.Area.CurrentArea;
 				if (area.IsTown || area.IsHideout)
 				{
 					LogDebug("In town/hideout, clicking Destroy button");
 					Thread.Sleep(250); // Wait for dialog
 					
-					// Click the hardcoded Destroy button position
+					// Click the  Destroy button position
 					Input.SetCursorPos(new Vector2(Settings.DestroyButtonX.Value + _windowOffset.X, Settings.DestroyButtonY.Value + _windowOffset.Y));
 					Thread.Sleep(Constants.INPUT_DELAY + Settings.ExtraDelay);
 					Input.Click(MouseButtons.Left);
