@@ -711,7 +711,7 @@ namespace MapBuddy
 				if (area.IsTown || area.IsHideout)
 				{
 					LogDebug("In town/hideout, clicking Destroy button");
-					Thread.Sleep(100); // Wait for dialog
+					Thread.Sleep(250); // Wait for dialog
 					
 					// Click the hardcoded Destroy button position
 					Input.SetCursorPos(new Vector2(Settings.DestroyButtonX.Value + _windowOffset.X, Settings.DestroyButtonY.Value + _windowOffset.Y));
