@@ -9,6 +9,7 @@ Features include:
 - Automatically crafts all Precursor Tablets in your Inventory / Stash with Orb of Transmutation / Orb of Augmentation
 
 **Automated currency retrieval from stash [Warning: this feature is alpha testing]**
+
 Retrives one stack of basic currency from Stash
 - Scrolls of Wisdom (40)
 - Orbs of Alchemy (20)
