@@ -466,7 +466,7 @@ namespace MapBuddy
 					LogDebug($"Processing normal item: {baseName}");
 
 					// Skip specific base types
-					if (baseName.Contains("Stellar") || 
+					if (baseName.Contains("Stellar Amulet") || 
 						baseName.Contains("Heavy Belt") || 
 						baseName.Contains("Attuned Wand")) || 
 						baseName.Contains("Sapphire Ring"))
