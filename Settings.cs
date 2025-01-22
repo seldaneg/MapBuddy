@@ -28,7 +28,8 @@ namespace MapBuddy
 			// Crafting settings
 			EnableCrafting = new ToggleNode(false);
 			AlchemyNormalItems = new ToggleNode(true);
-			TransmuteWaystones = new ToggleNode(true);
+			TripleCraftWhiteMaps = new ToggleNode(false);
+			AlchemyWaystones = new ToggleNode(true);
 			TransmutePrecursorTablets = new ToggleNode(true);
 			AugmentMagicItems = new ToggleNode(true);
 			RegalMagicMaps = new ToggleNode(true);
@@ -93,12 +94,15 @@ namespace MapBuddy
 
 		[Menu("Enable Crafting", 2001, 2000)]
 		public ToggleNode EnableCrafting { get; set; }
+		
+		[Menu("Triple-craft White Maps", 2002, 2000)]
+		public ToggleNode TripleCraftWhiteMaps { get; set; }
 
 		[Menu("Alchemy Normal Items", 2003, 2000)]
 		public ToggleNode AlchemyNormalItems { get; set; }
-
-		[Menu("Transmute Waystones", 2004, 2000)]
-		public ToggleNode TransmuteWaystones { get; set; }
+		
+		[Menu("Alchemy Normal Waystones", 2004, 2000)]
+		public ToggleNode AlchemyWaystones { get; set; }
 
 		[Menu("Transmute Precursor Tablets", 2005, 2000)]
 		public ToggleNode TransmutePrecursorTablets { get; set; }
