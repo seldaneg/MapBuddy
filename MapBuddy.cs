@@ -440,13 +440,35 @@ namespace MapBuddy
 				// Handle Waystones
 				else if (item.IsWaystone)
 				{
-					if (!Settings.AlchemyWaystones.Value)
+					if (Settings.TripleCraftWhiteMaps.Value)
+					{
+						LogDebug("Processing white map with triple-craft sequence");
+						if (TryGetCurrency(TRANSMUTATION_PATH, out var transmute))
+						{
+							ApplyCurrency(transmute, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
+
+							if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
+							{
+								ApplyCurrency(augment, item.Item);
+								Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
+
+								if (TryGetCurrency(REGAL_PATH, out var regal))
+								{
+									ApplyCurrency(regal, item.Item);
+									Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
+								}
+							}
+						}
+					}
+					
+					else if (!Settings.AlchemyWaystones.Value)
 					{
 						LogDebug($"Skipping waystone: transmute setting disabled");
 						continue;
 					}
 
-					if (TryGetCurrency(ALCHEMY_PATH, out var alchemy))
+					else if (TryGetCurrency(ALCHEMY_PATH, out var alchemy))
 					{
 						ApplyCurrency(alchemy, item.Item);
 						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
