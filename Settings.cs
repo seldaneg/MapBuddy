@@ -95,19 +95,19 @@ namespace MapBuddy
 		[Menu("Enable Crafting", 2001, 2000)]
 		public ToggleNode EnableCrafting { get; set; }
 		
-		[Menu("Triple-craft White Maps", 2002, 2000)]
-		public ToggleNode TripleCraftWhiteMaps { get; set; }
-
-		[Menu("Alchemy Normal Items", 2003, 2000)]
+		[Menu("Alchemy Normal Items (Maps handled separately below)", 2002, 2000)]
 		public ToggleNode AlchemyNormalItems { get; set; }
 		
-		[Menu("Alchemy Normal Waystones", 2004, 2000)]
+		[Menu("Transmute -> Augment -> Regal Normal Maps (Supercedes below)", 2003, 2000)]
+		public ToggleNode TripleCraftWhiteMaps { get; set; }
+		
+		[Menu("Alchemy Normal Maps", 2004, 2000)]
 		public ToggleNode AlchemyWaystones { get; set; }
 
 		[Menu("Transmute Precursor Tablets", 2005, 2000)]
 		public ToggleNode TransmutePrecursorTablets { get; set; }
 
-		[Menu("Augment Magic Items", 2006, 2000)]
+		[Menu("Augment Magic Maps and Precursor Tablets with 1 Affix", 2006, 2000)]
 		public ToggleNode AugmentMagicItems { get; set; }
 
 		[Menu("Regal Magic Maps", 2007, 2000)]
