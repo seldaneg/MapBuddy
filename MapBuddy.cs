@@ -407,7 +407,7 @@ namespace MapBuddy
 
         private void ProcessNormalItems(List<CraftableItem> items)
 		{
-			if (!Settings.AlchemyNormalItems.Value && !Settings.TransmuteWaystones.Value && !Settings.TransmutePrecursorTablets.Value)
+			if (!Settings.AlchemyNormalItems.Value && !Settings.AlchemyWaystones.Value && !Settings.TransmutePrecursorTablets.Value)
 			{
 				LogDebug("All normal item processing is disabled in settings");
 				return;
@@ -440,7 +440,7 @@ namespace MapBuddy
 				// Handle Waystones
 				else if (item.IsWaystone)
 				{
-					if (!Settings.TransmuteWaystones.Value)
+					if (!Settings.AlchemyWaystones.Value)
 					{
 						LogDebug($"Skipping waystone: transmute setting disabled");
 						continue;
@@ -469,7 +469,9 @@ namespace MapBuddy
 					if (baseName.Contains("Stellar Amulet") || 
 						baseName.Contains("Heavy Belt") || 
 						baseName.Contains("Attuned Wand") || 
-						baseName.Contains("Sapphire Ring"))
+						baseName.Contains("Sapphire Ring") ||
+						baseName.Contains("Expedition Logbook") 
+						)
 					{
 						LogDebug($"Skipping alchemy on filtered base type: {baseName}");
 						continue;
@@ -611,7 +613,7 @@ namespace MapBuddy
 		{
 			try
 			{
-				return items.FirstOrDefault(invItem => invItem.Item.Path.Contains(path));
+				return items.FirstOrDefault(invItem => invItem.Item.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
 			}
 			catch (Exception ex)
 			{
