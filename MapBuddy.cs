@@ -49,6 +49,8 @@ namespace MapBuddy
         private const string TRANSMUTATION_PATH = "Metadata/Items/Currency/CurrencyUpgradeToMagic";
         private const string AUGMENTATION_PATH = "Metadata/Items/Currency/CurrencyAddModToMagic";
         private const string REGAL_PATH = "Metadata/Items/Currency/CurrencyUpgradeMagicToRare";
+		private const string VAAL_PATH = "Metadata/Items/Currency/CurrencyCorrupt";
+		private const string EXALT_PATH = "Metadata/Items/Currency/CurrencyAddModToRare";
 
         // Special item paths
         private const string WAYSTONE_PATH = "Metadata/Items/AtlasUpgrades/AtlasRegionUpgrade";
@@ -403,6 +405,9 @@ namespace MapBuddy
 			
 			// Process magic maps (Regal)
 			//ProcessMagicMaps(craftableItems.Where(x => x.Rarity == ItemRarity.Magic && x.IsMap).ToList());
+			
+			// Process rare maps (Vaal)
+			ProcessRareMaps(craftableItems.Where(x => x.Rarity == ItemRarity.Rare).ToList());
 		}
 
         private void ProcessNormalItems(List<CraftableItem> items)
@@ -458,6 +463,7 @@ namespace MapBuddy
 									ApplyCurrency(regal, item.Item);
 									Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
 								}
+								
 							}
 						}
 					}
@@ -473,6 +479,13 @@ namespace MapBuddy
 						ApplyCurrency(alchemy, item.Item);
 						Thread.Sleep(Constants.CLICK_DELAY + Settings.ExtraDelay);
 					}
+					
+					if (Settings.VaalMapsAfterCrafting.Value && TryGetCurrency(VAAL_PATH, out var vaal))
+					{
+						ApplyCurrency(vaal, item.Item);
+						Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+					}
+					
 				}
 				// Handle other normal items
 				else
@@ -575,18 +588,121 @@ namespace MapBuddy
 				}
 			}
 		}
+		
+		
+		
+		
+		
+		
+		
+		private void ProcessRareMaps(List<CraftableItem> items)
+		{
+			// Early exit if all relevant settings are disabled
+			if (!Settings.ExaltRareMaps.Value && !Settings.VaalMapsAfterCrafting.Value)
+			{
+				LogDebug("All Rare crafting options are disabled in settings");
+				return;
+			}
+
+			var processedIds = new HashSet<string>();
+			var rareMaps = items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare).ToList();
+			
+			
+			foreach (var item in rareMaps)
+			{
+			
+				var mods = item.Item.Item.GetComponent<Mods>();
+				var explicitCount = mods.ExplicitMods.Count();
+				var itemId = item.Item.GetHashCode().ToString();
+			
+				if (processedIds.Contains(itemId)) continue;
+				processedIds.Add(itemId);
+			
+
+
+				var exaltsToUse = explicitCount switch
+			   {
+				   3 => 3,
+				   4 => 2,
+				   5 => 1,
+				   _ => 0
+			   };
+
+			   for (int i = 0; i < exaltsToUse; i++)
+			   {
+				   
+				   if (Settings.ExaltRareMaps.Value && TryGetCurrency(EXALT_PATH, out var exalt))
+					{
+					   LogDebug($"Applying exalt {i + 1} of {exaltsToUse}");
+					   ApplyCurrency(exalt, item.Item);
+					   Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				   }
+			   }
+				
+				// if (Settings.ExaltRareMaps.Value && TryGetCurrency(EXALT_PATH, out var exalt))
+			    // {
+				   // LogDebug($"Processing rare map for exalt: {item.Item.Item.Path}");
+				   // ApplyCurrency(exalt, item.Item);
+				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				   
+				   // ApplyCurrency(exalt, item.Item);
+				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				   
+				   // ApplyCurrency(exalt, item.Item);
+				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				   
+			    // }
+				
+				
+				if (Settings.VaalMapsAfterCrafting.Value && TryGetCurrency(VAAL_PATH, out var vaal))
+			    {
+				   LogDebug($"Processing rare map for vaaling: {item.Item.Item.Path}");
+				   ApplyCurrency(vaal, item.Item);
+				   Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+			    }
+				
+			}
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 
         private void ProcessMagicMaps(List<CraftableItem> items)
         {
             var twoAffixMaps = items.Where(x => x.AffixCount == 2 && x.IsMap);
             
-            if (TryGetCurrency(REGAL_PATH, out var regal))
+            if (Settings.RegalMagicMaps.Value && TryGetCurrency(REGAL_PATH, out var regal))
             {
                 foreach (var item in twoAffixMaps)
                 {
                     ApplyCurrency(regal, item.Item);
+					Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
                 }
             }
+			if (Settings.VaalMapsAfterCrafting.Value && TryGetCurrency(VAAL_PATH, out var vaal))
+			{
+				foreach (var item in twoAffixMaps)
+                {
+					ApplyCurrency(vaal, item.Item);
+					Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+                }
+				
+				
+			}
         }
 		
 		
@@ -615,7 +731,7 @@ namespace MapBuddy
 				var isMap = baseItem.HasComponent<Map>();
 				var isPrecursorTablet = path.StartsWith(PRECURSOR_PATH, StringComparison.OrdinalIgnoreCase);
 
-				LogDebug($"Found item - Path: {path}, IsMap: {isMap}, IsPrecursor: {isPrecursorTablet}");
+				LogDebug($"Found item - Path: {path}, IsMap: {isMap}, IsPrecursor: {isPrecursorTablet}, Rarity: {mods.ItemRarity}");
 
 				craftableItems.Add(new CraftableItem
 				{
