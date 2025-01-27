@@ -115,7 +115,7 @@ namespace MapBuddy
 		[Menu("Regal Magic Maps", 2007, 2000)]
 		public ToggleNode RegalMagicMaps { get; set; }
 		
-		[Menu("Exalt Rare Maps", 2008, 2000)]
+		[Menu("Exalt Rare Maps (to 6 total mods)", 2008, 2000)]
 		public ToggleNode ExaltRareMaps { get; set; }
 		
 		[Menu("Vaal Maps After Crafting", 2009, 2000)]
