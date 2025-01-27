@@ -33,6 +33,8 @@ namespace MapBuddy
 			TransmutePrecursorTablets = new ToggleNode(true);
 			AugmentMagicItems = new ToggleNode(true);
 			RegalMagicMaps = new ToggleNode(true);
+			VaalMapsAfterCrafting = new ToggleNode(false);
+			ExaltRareMaps = new ToggleNode(false);
 			
 			// Currency Management
 			AutoFillCurrency = new ToggleNode(true);
@@ -112,6 +114,16 @@ namespace MapBuddy
 
 		[Menu("Regal Magic Maps", 2007, 2000)]
 		public ToggleNode RegalMagicMaps { get; set; }
+		
+		[Menu("Exalt Rare Maps", 2008, 2000)]
+		public ToggleNode ExaltRareMaps { get; set; }
+		
+		[Menu("Vaal Maps After Crafting", 2009, 2000)]
+		public ToggleNode VaalMapsAfterCrafting { get; set; }
+		
+		
+		
+		
 
 		// Currency Management
 		[Menu("Currency Management", 3000)]
