@@ -482,10 +482,16 @@ namespace MapBuddy
 				for (int i = 0; i < 3; i++)
 				{
 					var items = GetCurrentItems();
-					foreach (var item in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
+					foreach (var initialItem in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
 					{
-						var prefixCount = await CountPrefixes(item.Item);
-						var suffixCount = await CountSuffixes(item.Item);
+						
+						// Track our current map through exalting process
+						var currentItem = initialItem;
+						var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
+						LogDebug($"Processing map: {mapName}");
+						
+						var prefixCount = await CountPrefixes(currentItem.Item);
+						var suffixCount = await CountSuffixes(currentItem.Item);
 
 						if (prefixCount + suffixCount >=6) {
 							LogDebug($"Skipping exalt - Cannot add further mods.  Prefixes: {prefixCount}, Suffixes: {suffixCount}");
@@ -502,36 +508,40 @@ namespace MapBuddy
 
 						if (TryGetCurrency(EXALT_PATH, out var exalt))
 						{
-							LogDebug($"Applying exalt to map with {prefixCount} prefixes and {suffixCount} suffixes");
-							ApplyCurrency(exalt, item.Item);
+							LogDebug($"Applying exalt to map with {prefixCount} prefixes and {suffixCount} suffixes    Map name {mapName}");
+							ApplyCurrency(exalt, currentItem.Item);
 							
 							// Wait for item to update
 							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
 							await Task.Delay(250); // Additional delay for game state to update
 							
-							// Actually process the refreshed items
-							RefreshAndCraftItems((refreshedItems) => {
-								// Find our item in the refreshed list
-								var updatedItem = refreshedItems.FirstOrDefault(x => 
-									x.Item.GetHashCode() == item.Item.GetHashCode());
-								
-								if (updatedItem != null)
-								{
-									// Log updated item state
-									LogDebug($"Found updated item after exalt");
-									Task.Run(async () => {
-										var newPrefixCount = await CountPrefixes(updatedItem.Item);
-										var newSuffixCount = await CountSuffixes(updatedItem.Item);
-										LogDebug($"Updated counts - Prefixes: {newPrefixCount}, Suffixes: {newSuffixCount}");
-									}).Wait();
-								}
-								else
-								{
-									LogDebug("Could not find updated item in refreshed inventory");
-								}
-							});
-
+							// Get fresh inventory state and find our map by position
+							 var refreshedItems = GetCurrentItems();
+							var updatedItem = refreshedItems.FirstOrDefault(x => 
+								x.IsMap && 
+								x.Rarity == ItemRarity.Rare && 
+								x.Item.Item.GetComponent<Base>().Name == mapName);
+							
+							if (updatedItem != null)
+							{
+								currentItem = updatedItem; // Update our reference to current map
+								var newPrefixCount = await CountPrefixes(currentItem.Item);
+								var newSuffixCount = await CountSuffixes(currentItem.Item);
+								LogDebug($"After exalt on {mapName} - Prefixes: {newPrefixCount}, Suffixes: {newSuffixCount}");
+							}
+							else
+							{
+								LogDebug("Could not find map after exalt - moving to next map");
+								break;
+							}
 						}
+						else
+						{
+							LogDebug("No more exalts available");
+							return; // Exit entire exalting process
+						}
+
+						
 
 
 					}
@@ -539,21 +549,57 @@ namespace MapBuddy
 				}
 			}
 
-			// Delirium crafting
-			if (Settings.UseDistilledEmotions.Value)
+		
+			
+			
+			
+			// For Delirium and Vaal:
+			if (Settings.UseDistilledEmotions.Value || Settings.VaalMapsAfterCrafting.Value)
 			{
-				RefreshAndCraftItems((items) => {
-					ApplyDeliriumToRareMaps(items.Where(x => x.Rarity == ItemRarity.Rare).ToList());
-				});
-			}
+				var items = GetCurrentItems();
+				foreach (var initialItem in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
+				{
+					var currentItem = initialItem;
+					var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
+					LogDebug($"Processing map for Delirium/Vaal: {mapName}");
 
-			// Vaal orbs
-			if (Settings.VaalMapsAfterCrafting.Value)
-			{
-				RefreshAndCraftItems((items) => {
-					ProcessVaalOrbs(items.Where(x => x.Rarity == ItemRarity.Rare).ToList());
-				});
+					if (Settings.UseDistilledEmotions.Value)
+					{
+						ApplyDeliriumToRareMaps(new List<CraftableItem> { currentItem });
+						
+						// Find map after Delirium
+						var refreshedItems = GetCurrentItems();
+						currentItem = refreshedItems.FirstOrDefault(x => 
+							x.IsMap && 
+							x.Rarity == ItemRarity.Rare && 
+							x.Item.Item.GetComponent<Base>().Name == mapName);
+							
+						if (currentItem == null)
+						{
+							LogDebug($"Could not find {mapName} after Delirium - skipping Vaal");
+							continue;
+						}
+					}
+
+					if (Settings.VaalMapsAfterCrafting.Value && currentItem != null)
+					{
+						if (TryGetCurrency(VAAL_PATH, out var vaal))
+						{
+							LogDebug($"Applying Vaal to {mapName}");
+							ApplyCurrency(vaal, currentItem.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+						}
+					}
+				}
 			}
+			
+			
+			
+			
+			
+			
+			
+			
 		}
 		
 		
