@@ -15,9 +15,73 @@ using System.Drawing;
 using ExileCore2.PoEMemory.Elements;
 using ExileCore2.PoEMemory.MemoryObjects;
 using Map = ExileCore2.PoEMemory.Components.Map;
+using System.Threading.Tasks;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using ExileCore2;
+using ExileCore2.PoEMemory.Components;
+using ExileCore2.PoEMemory.MemoryObjects;
+using ExileCore2.Shared.Enums;
+using ExileCore2.Shared.Interfaces;
+using ImGuiNET;
+
+
 
 namespace MapBuddy
 {
+	public class MapInfo
+	{
+		public string Name { get; private set; }
+		public List<(string Name, string DisplayName, bool IsPrefix)> Mods { get; private set; } = new();
+		public int PrefixCount { get; private set; }
+		public int SuffixCount { get; private set; }
+		public ItemRarity Rarity { get; private set; }
+		public bool IsCorrupted { get; private set; }
+		public bool IsIdentified { get; private set; }
+
+		public static async Task<MapInfo> FromItem(NormalInventoryItem item)
+		{
+			if (item?.Item == null) return null;
+
+			var info = new MapInfo();
+			var baseComponent = item.Item.GetComponent<Base>();
+			var modsComponent = item.Item.GetComponent<Mods>();
+
+			if (baseComponent == null || modsComponent == null) return null;
+
+			info.Name = baseComponent.Name;
+			info.Rarity = modsComponent.ItemRarity;
+			info.IsCorrupted = baseComponent.isCorrupted;
+			info.IsIdentified = modsComponent.Identified;
+
+			// Process mods
+			var allMods = modsComponent.ItemMods?.ToList() ?? new List<ItemMod>();
+			if (allMods.Count == 0)
+			{
+				// Wait a bit and try again in case the mods haven't updated yet
+				await Task.Delay(100);
+				allMods = modsComponent.ItemMods?.ToList() ?? new List<ItemMod>();
+			}
+
+			foreach (var mod in allMods)
+			{
+				// In PoE, suffixes typically start with "of"
+				var isPrefix = !mod.DisplayName.StartsWith("of", StringComparison.OrdinalIgnoreCase);
+				info.Mods.Add((mod.Name, mod.DisplayName, isPrefix));
+			}
+
+			// Count prefixes and suffixes
+			info.PrefixCount = info.Mods.Count(m => m.IsPrefix);
+			info.SuffixCount = info.Mods.Count(m => !m.IsPrefix);
+
+			return info;
+		}
+	}
+	
+	
     public sealed class MapBuddy : BaseSettingsPlugin<Settings>
     {
         // Action states
@@ -51,6 +115,13 @@ namespace MapBuddy
         private const string REGAL_PATH = "Metadata/Items/Currency/CurrencyUpgradeMagicToRare";
 		private const string VAAL_PATH = "Metadata/Items/Currency/CurrencyCorrupt";
 		private const string EXALT_PATH = "Metadata/Items/Currency/CurrencyAddModToRare";
+		
+		private const string DISTILLEDIRE_PATH = "Metadata/Items/Currency/DistilledEmotion1";
+		private const string DISTILLEDGUILT_PATH = "Metadata/Items/Currency/DistilledEmotion2";
+		private const string DISTILLEDGREED_PATH = "Metadata/Items/Currency/DistilledEmotion3";
+		private const string DISTILLEDPARANOIA_PATH = "Metadata/Items/Currency/DistilledEmotion4";
+		private const string DISTILLEDENVY_PATH = "Metadata/Items/Currency/DistilledEmotion5";
+
 
         // Special item paths
         private const string WAYSTONE_PATH = "Metadata/Items/AtlasUpgrades/AtlasRegionUpgrade";
@@ -132,47 +203,47 @@ namespace MapBuddy
 				(now - _lastCraftAttempt).TotalMilliseconds < MinTimeBetweenActions)
 				return;
 
-			
-
-			// Combined hotkey handling for both identification and crafting
 			if (Settings.HotKey.PressedOnce())
 			{
 				if (Settings.Enable.Value)
 				{
-					_isIdentifying = true;
-					try
-					{
-						IdentifyItems();
-						
-						// If crafting is enabled, proceed with crafting after identification
-						if (Settings.EnableCrafting)
-						{
-							_isCrafting = true;
-							CraftItems();
-						}
-						
-						
-						// Check for currency auto-fill when stash is open
-						if (Settings.AutoFillCurrency && 
-							GameController.IngameState.IngameUi.StashElement.IsVisible)
-						{
-							TryFillCurrencyFromStash();
-						}
-						
-					}
-					catch (Exception ex)
-					{
-						LogError($"Error during processing: {ex.Message}");
-						LogDebug($"Exception: {ex}");
-					}
-					finally
-					{
-						_isIdentifying = false;
-						_isCrafting = false;
-						_lastIdentifyAttempt = now;
-						_lastCraftAttempt = now;
-					}
+					ProcessHotkeyAction();
 				}
+			}
+		}
+		
+		
+		private async void ProcessHotkeyAction()
+		{
+			var now = DateTime.Now;
+			_isIdentifying = true;
+			try
+			{
+				IdentifyItems();
+				
+				if (Settings.EnableCrafting)
+				{
+					_isCrafting = true;
+					await CraftItems();
+				}
+				
+				if (Settings.AutoFillCurrency && 
+					GameController.IngameState.IngameUi.StashElement.IsVisible)
+				{
+					TryFillCurrencyFromStash();
+				}
+			}
+			catch (Exception ex)
+			{
+				LogError($"Error during processing: {ex.Message}");
+				LogDebug($"Exception: {ex}");
+			}
+			finally
+			{
+				_isIdentifying = false;
+				_isCrafting = false;
+				_lastIdentifyAttempt = now;
+				_lastCraftAttempt = now;
 			}
 		}
 
@@ -287,6 +358,21 @@ namespace MapBuddy
             public ItemRarity Rarity { get; set; }
             public int AffixCount { get; set; }
         }
+		
+		
+		private async Task<int> CountPrefixes(NormalInventoryItem item)
+		{
+			var info = await MapInfo.FromItem(item);
+			return info?.PrefixCount ?? 0;
+		}
+
+		private async Task<int> CountSuffixes(NormalInventoryItem item)
+		{
+			var info = await MapInfo.FromItem(item);
+			return info?.SuffixCount ?? 0;
+		}
+		
+		
 
         private void IdentifyItems()
         {
@@ -382,33 +468,96 @@ namespace MapBuddy
             }
         }
 
-        private void CraftItems()
+        private async Task CraftItems()
 		{
-			var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
-			var playerInventory = inventoryPanel[InventoryIndex.PlayerInventory];
-			
-			var inventoryItems = new List<NormalInventoryItem>(playerInventory.VisibleInventoryItems);
-			if (Settings.IdentifyStashItems && 
-				GameController.IngameState.IngameUi.StashElement.IsVisible)
+			// Initial crafting of normal/magic items
+			RefreshAndCraftItems((items) => {
+				ProcessNormalItems(items.Where(x => x.Rarity == ItemRarity.Normal).ToList());
+				ProcessMagicItems(items.Where(x => x.Rarity == ItemRarity.Magic).ToList());
+			});
+
+			// Exalting process (up to 3 times)
+			if (Settings.ExaltRareMaps.Value)
 			{
-				inventoryItems.AddRange(
-					GameController.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
+				for (int i = 0; i < 3; i++)
+				{
+					var items = GetCurrentItems();
+					foreach (var item in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
+					{
+						var prefixCount = await CountPrefixes(item.Item);
+						var suffixCount = await CountSuffixes(item.Item);
+
+						if (prefixCount + suffixCount >=6) {
+							LogDebug($"Skipping exalt - Cannot add further mods.  Prefixes: {prefixCount}, Suffixes: {suffixCount}");
+							continue;
+						}
+
+						if ((Settings.StopAt3Prefixes.Value && prefixCount >= 3) ||
+							(Settings.StopAt3Suffixes.Value && suffixCount >= 3))
+						{
+							LogDebug($"Skipping exalt - Prefixes: {prefixCount}, Suffixes: {suffixCount}");
+							continue;
+						}
+
+
+						if (TryGetCurrency(EXALT_PATH, out var exalt))
+						{
+							LogDebug($"Applying exalt to map with {prefixCount} prefixes and {suffixCount} suffixes");
+							ApplyCurrency(exalt, item.Item);
+							
+							// Wait for item to update
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+							await Task.Delay(250); // Additional delay for game state to update
+							
+							// Actually process the refreshed items
+							RefreshAndCraftItems((refreshedItems) => {
+								// Find our item in the refreshed list
+								var updatedItem = refreshedItems.FirstOrDefault(x => 
+									x.Item.GetHashCode() == item.Item.GetHashCode());
+								
+								if (updatedItem != null)
+								{
+									// Log updated item state
+									LogDebug($"Found updated item after exalt");
+									Task.Run(async () => {
+										var newPrefixCount = await CountPrefixes(updatedItem.Item);
+										var newSuffixCount = await CountSuffixes(updatedItem.Item);
+										LogDebug($"Updated counts - Prefixes: {newPrefixCount}, Suffixes: {newSuffixCount}");
+									}).Wait();
+								}
+								else
+								{
+									LogDebug("Could not find updated item in refreshed inventory");
+								}
+							});
+
+						}
+
+
+					}
+					//RefreshAndCraftItems((itemsAfterExalt) => {}); // Refresh inventory after each exalt pass
+				}
 			}
 
-			var craftableItems = GetCraftableItems(inventoryItems);
-			
-			// Process normal items first (Alchemy/Transmute)
-			ProcessNormalItems(craftableItems.Where(x => x.Rarity == ItemRarity.Normal).ToList());
-			
-			// Process magic items (Augment)
-			ProcessMagicItems(craftableItems.Where(x => x.Rarity == ItemRarity.Magic).ToList());
-			
-			// Process magic maps (Regal)
-			//ProcessMagicMaps(craftableItems.Where(x => x.Rarity == ItemRarity.Magic && x.IsMap).ToList());
-			
-			// Process rare maps (Vaal)
-			ProcessRareMaps(craftableItems.Where(x => x.Rarity == ItemRarity.Rare).ToList());
+			// Delirium crafting
+			if (Settings.UseDistilledEmotions.Value)
+			{
+				RefreshAndCraftItems((items) => {
+					ApplyDeliriumToRareMaps(items.Where(x => x.Rarity == ItemRarity.Rare).ToList());
+				});
+			}
+
+			// Vaal orbs
+			if (Settings.VaalMapsAfterCrafting.Value)
+			{
+				RefreshAndCraftItems((items) => {
+					ProcessVaalOrbs(items.Where(x => x.Rarity == ItemRarity.Rare).ToList());
+				});
+			}
 		}
+		
+		
+		
 
         private void ProcessNormalItems(List<CraftableItem> items)
 		{
@@ -593,84 +742,95 @@ namespace MapBuddy
 		
 		
 		
-		
-		
-		private void ProcessRareMaps(List<CraftableItem> items)
+		private void ApplyDeliriumToRareMaps(List<CraftableItem> items)
 		{
-			// Early exit if all relevant settings are disabled
-			if (!Settings.ExaltRareMaps.Value && !Settings.VaalMapsAfterCrafting.Value)
-			{
-				LogDebug("All Rare crafting options are disabled in settings");
-				return;
-			}
-
-			var processedIds = new HashSet<string>();
-			var rareMaps = items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare).ToList();
-			
-			
-			foreach (var item in rareMaps)
-			{
-			
-				var mods = item.Item.Item.GetComponent<Mods>();
-				var explicitCount = mods.ExplicitMods.Count();
-				var itemId = item.Item.GetHashCode().ToString();
-			
-				if (processedIds.Contains(itemId)) continue;
-				processedIds.Add(itemId);
-			
-
-
-				var exaltsToUse = explicitCount switch
+		   var rareMaps = items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare).ToList();
+		   
+		   foreach (var item in rareMaps)
+		   {
+			   var mods = item.Item.Item.GetComponent<Mods>();
+			   if (mods.ItemMods.Any(x => x.Name == "InstilledMapDelirium"))
 			   {
-				   3 => 3,
-				   4 => 2,
-				   5 => 1,
-				   _ => 0
-			   };
-
-			   for (int i = 0; i < exaltsToUse; i++)
-			   {
-				   
-				   if (Settings.ExaltRareMaps.Value && TryGetCurrency(EXALT_PATH, out var exalt))
-					{
-					   LogDebug($"Applying exalt {i + 1} of {exaltsToUse}");
-					   ApplyCurrency(exalt, item.Item);
-					   Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-				   }
+				   LogDebug("Map already has Delirium mod, skipping");
+				   continue;
 			   }
-				
-				// if (Settings.ExaltRareMaps.Value && TryGetCurrency(EXALT_PATH, out var exalt))
-			    // {
-				   // LogDebug($"Processing rare map for exalt: {item.Item.Item.Path}");
-				   // ApplyCurrency(exalt, item.Item);
-				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+
+			   // Select emotion type based on settings priority
+			   string emotionPath = null;
+			   if (Settings.UseDistilledIre.Value)
+				   emotionPath = DISTILLEDIRE_PATH;
+			   else if (Settings.UseDistilledGuilt.Value)
+				   emotionPath = DISTILLEDGUILT_PATH;
+			   else if (Settings.UseDistilledGreed.Value)
+				   emotionPath = DISTILLEDGREED_PATH;
+			   else if (Settings.UseDistilledParanoia.Value)
+				   emotionPath = DISTILLEDPARANOIA_PATH;
+			   else if (Settings.UseDistilledEnvy.Value)
+				   emotionPath = DISTILLEDENVY_PATH;
+
+			   if (emotionPath == null)
+			   {
+				   LogDebug("No emotion type selected in settings");
+				   continue;
+			   }
+
+			   if (TryGetCurrency(emotionPath, out var emotion))
+			   {
+				   LogDebug($"Applying Distilled Emotion to map: {item.Item.Item.Path}");
 				   
-				   // ApplyCurrency(exalt, item.Item);
-				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				   // Right click emotion
+				   var emotionPos = emotion.GetClientRect().Center;
+				   Input.SetCursorPos(new Vector2(emotionPos.X + _windowOffset.X, emotionPos.Y + _windowOffset.Y));
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay);
+				   Input.Click(MouseButtons.Right);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay);
+
+				   Thread.Sleep(200);  // wait for dialog to load
+			   
+				   // Control-click emotion 3 times
+				   Input.KeyDown(Keys.LControlKey);
+				   for (int i = 0; i < 3; i++)
+				   {
+					   Input.Click(MouseButtons.Left);
+					   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				   }
+
+				   // Control-click map
+				   var itemPos = item.Item.GetClientRect().Center;
+				   Input.SetCursorPos(new Vector2(itemPos.X + _windowOffset.X, itemPos.Y + _windowOffset.Y));
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				   Input.Click(MouseButtons.Left);
+				   Input.KeyUp(Keys.LControlKey);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+
+				   // Click Instill button
+				   Input.SetCursorPos(new Vector2(Settings.InstillButtonX.Value + _windowOffset.X, Settings.InstillButtonY.Value + _windowOffset.Y));
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				   Input.Click(MouseButtons.Left);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+
+				   // Click map in delirium interface
+				   Input.KeyDown(Keys.LControlKey);
+				   Input.SetCursorPos(new Vector2(Settings.DeliriumMapX.Value + _windowOffset.X, Settings.DeliriumMapY.Value + _windowOffset.Y));
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				   Input.Click(MouseButtons.Left);
+				   Input.KeyUp(Keys.LControlKey);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
 				   
-				   // ApplyCurrency(exalt, item.Item);
-				   // Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-				   
-			    // }
-				
-				
-				if (Settings.VaalMapsAfterCrafting.Value && TryGetCurrency(VAAL_PATH, out var vaal))
-			    {
-				   LogDebug($"Processing rare map for vaaling: {item.Item.Item.Path}");
-				   ApplyCurrency(vaal, item.Item);
-				   Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-			    }
-				
-			}
+				   // Close interface with Escape
+				   Input.KeyDown(Keys.Escape);
+				   Thread.Sleep(Constants.INPUT_DELAY);
+				   Input.KeyUp(Keys.Escape);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay);
+
+				   // Reopen inventory
+				   Input.KeyDown(Keys.I);
+				   Thread.Sleep(Constants.INPUT_DELAY);
+				   Input.KeyUp(Keys.I);
+				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay);
+			   }
+		   }
 		}
-		
-		
-		
-		
-		
-		
-		
-		
 		
 		
 		
@@ -706,16 +866,15 @@ namespace MapBuddy
         }
 		
 		
+		
 		private List<CraftableItem> GetCraftableItems(IEnumerable<NormalInventoryItem> items)
 		{
 			var craftableItems = new List<CraftableItem>();
-
 			foreach (var invItem in items)
 			{
 				var baseItem = invItem.Item;  // Get the base item first
 				if (!baseItem.HasComponent<Mods>())
 					continue;
-
 				var mods = baseItem.GetComponent<Mods>();
 				
 				// Skip corrupted items
@@ -730,9 +889,7 @@ namespace MapBuddy
 				// More specific path checking
 				var isMap = baseItem.HasComponent<Map>();
 				var isPrecursorTablet = path.StartsWith(PRECURSOR_PATH, StringComparison.OrdinalIgnoreCase);
-
 				LogDebug($"Found item - Path: {path}, IsMap: {isMap}, IsPrecursor: {isPrecursorTablet}, Rarity: {mods.ItemRarity}");
-
 				craftableItems.Add(new CraftableItem
 				{
 					Item = invItem,
@@ -743,9 +900,48 @@ namespace MapBuddy
 					AffixCount = mods.ImplicitMods.Count() + mods.ExplicitMods.Count()
 				});
 			}
-
 			return craftableItems;
 		}
+		
+		
+		private List<CraftableItem> GetCurrentItems()
+		{
+			var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
+			var playerInventory = inventoryPanel[InventoryIndex.PlayerInventory];
+			var inventoryItems = new List<NormalInventoryItem>(playerInventory.VisibleInventoryItems);
+			
+			if (Settings.IdentifyStashItems && 
+				GameController.IngameState.IngameUi.StashElement.IsVisible)
+			{
+				inventoryItems.AddRange(
+					GameController.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
+			}
+
+			return GetCraftableItems(inventoryItems);
+		}
+		
+		private void RefreshAndCraftItems(Action<List<CraftableItem>> craftingAction)
+		{
+			var items = GetCurrentItems();
+			craftingAction(items);
+		}
+		
+	
+		
+		private void ProcessVaalOrbs(List<CraftableItem> items)
+		{
+			foreach (var item in items)
+			{
+				if (TryGetCurrency(VAAL_PATH, out var vaal))
+				{
+					LogDebug($"Applying Vaal orb to map");
+					ApplyCurrency(vaal, item.Item);
+					Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+				}
+			}
+		}
+		
+		
 
 		private NormalInventoryItem GetItemWithBaseName(string path, IEnumerable<NormalInventoryItem> items)
 		{
@@ -956,6 +1152,9 @@ namespace MapBuddy
 
         private bool TryGetCurrency(string path, out NormalInventoryItem currency)
         {
+			
+			
+			
             var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
             var playerInventory = inventoryPanel[InventoryIndex.PlayerInventory];
             
