@@ -68,14 +68,17 @@ namespace MapBuddy
 
 			foreach (var mod in allMods)
 			{
-				// In PoE, suffixes typically start with "of"
+				
+				//info.AllMods.Add((mod.Name, mod.DisplayName, !mod.DisplayName.StartsWith("of", StringComparison.OrdinalIgnoreCase)));
+				
+				
 				var isPrefix = !mod.DisplayName.StartsWith("of", StringComparison.OrdinalIgnoreCase);
 				info.Mods.Add((mod.Name, mod.DisplayName, isPrefix));
 			}
 
 			// Count prefixes and suffixes
-			info.PrefixCount = info.Mods.Count(m => m.IsPrefix);
-			info.SuffixCount = info.Mods.Count(m => !m.IsPrefix);
+			info.PrefixCount = info.Mods.Count(m => m.IsPrefix && m.Name != "InstilledMapDelirium");
+			info.SuffixCount = info.Mods.Count(m => !m.IsPrefix && m.Name != "InstilledMapDelirium");
 
 			return info;
 		}
@@ -155,7 +158,7 @@ namespace MapBuddy
             return true;
         }
 
-        private void LogDebug(string message)
+        public void LogDebug(string message)
         {
             if (!Settings.ShowDebugWindow) return;
             
@@ -363,6 +366,13 @@ namespace MapBuddy
 		private async Task<int> CountPrefixes(NormalInventoryItem item)
 		{
 			var info = await MapInfo.FromItem(item);
+			if (info != null)
+			{
+				foreach (var mod in info.Mods)
+				{
+					LogDebug($"Found mod - Name: {mod.Name}, DisplayName: {mod.DisplayName}, IsPrefix: {mod.IsPrefix}");
+				}
+			}
 			return info?.PrefixCount ?? 0;
 		}
 
@@ -473,6 +483,7 @@ namespace MapBuddy
 			// Initial crafting of normal/magic items
 			RefreshAndCraftItems((items) => {
 				ProcessNormalItems(items.Where(x => x.Rarity == ItemRarity.Normal).ToList());
+				items = GetCurrentItems();
 				ProcessMagicItems(items.Where(x => x.Rarity == ItemRarity.Magic).ToList());
 			});
 
@@ -1102,6 +1113,41 @@ namespace MapBuddy
 						attempts++;
 					}
 				}
+				
+				
+				// Second phase: Check inventory and return non-full stacks
+				var currenciesInInventory = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems
+					.Where(x => x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
+					.ToList();
+
+				foreach (var currency in currenciesInInventory)
+				{
+					var stack = currency.Item.GetComponent<Stack>();
+					if (stack == null) continue;
+
+					if (stack.Size < maxStack)
+					{
+						LogDebug($"Returning non-full stack of {currencyPath} (size: {stack.Size})");
+						var currencyPos = currency.GetClientRect().Center;
+						Input.SetCursorPos(new Vector2(currencyPos.X + _windowOffset.X, currencyPos.Y + _windowOffset.Y));
+						Thread.Sleep(Constants.INPUT_DELAY);
+						Input.KeyDown(Keys.LControlKey);
+						Input.Click(MouseButtons.Left);
+						Input.KeyUp(Keys.LControlKey);
+						Thread.Sleep(Constants.CLICK_DELAY);
+					}
+					else
+					{
+						LogDebug($"Keeping full stack of {currencyPath} (size: {stack.Size})");
+					}
+				}
+
+				Thread.Sleep(100); // Small delay between different currency types
+				
+				
+				
+				
+				
 			}
 		}
 
