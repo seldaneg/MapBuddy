@@ -36,6 +36,10 @@ namespace MapBuddy
 			VaalMapsAfterCrafting = new ToggleNode(false);
 			ExaltRareMaps = new ToggleNode(false);
 			
+			StopAt3Prefixes = new ToggleNode(false);
+			StopAt3Suffixes = new ToggleNode(false);
+			
+			
 			// Currency Management
 			AutoFillCurrency = new ToggleNode(true);
 			CurrencyTabName = new TextNode("Currency");
@@ -44,6 +48,19 @@ namespace MapBuddy
 			TransmutationStackSize = new RangeNode<int>(40, 0, 40); 
 			AugmentationStackSize = new RangeNode<int>(30, 0, 30); 
 			RegalStackSize = new RangeNode<int>(20, 0, 20);     
+			
+			// Distilled Emotion settings
+			UseDistilledEmotions = new ToggleNode(false);
+			UseDistilledIre = new ToggleNode(false);
+			UseDistilledGuilt = new ToggleNode(false);
+			UseDistilledGreed = new ToggleNode(false);
+			UseDistilledParanoia = new ToggleNode(false);
+			UseDistilledEnvy = new ToggleNode(false);
+			InstillButtonX = new RangeNode<int>(1283, 0, 3840);
+			InstillButtonY = new RangeNode<int>(1119, 0, 2160);
+			DeliriumMapX = new RangeNode<int>(1275, 0, 3840);
+			DeliriumMapY = new RangeNode<int>(583, 0, 2160);
+						
 
 			// UI Settings
 			ShowDebugWindow = new ToggleNode(false);
@@ -115,11 +132,57 @@ namespace MapBuddy
 		[Menu("Regal Magic Maps", 2007, 2000)]
 		public ToggleNode RegalMagicMaps { get; set; }
 		
-		[Menu("Exalt Rare Maps (to 6 total mods)", 2008, 2000)]
+		[Menu("Exalt Rare Maps (to 6 total mods unless Stop at 3 Prefixes/Suffixes selected below)", 2008, 2000)]
 		public ToggleNode ExaltRareMaps { get; set; }
 		
-		[Menu("Vaal Maps After Crafting", 2009, 2000)]
+		[Menu("Stop Exalting at 3 Prefixes", 2009, 2000)]
+		public ToggleNode StopAt3Prefixes { get; set; }
+
+		[Menu("Stop Exalting at 3 Suffixes", 2010, 2000)]
+		public ToggleNode StopAt3Suffixes { get; set; }
+		
+		[Menu("Vaal Maps after all other crafting", 2011, 2000)]
 		public ToggleNode VaalMapsAfterCrafting { get; set; }
+		
+		
+		[Menu("Use Distilled Emotions (Must select this option and 1 Distilled Emotion below)", 2012, 2000)]
+		public ToggleNode UseDistilledEmotions { get; set; }
+		
+		[Menu("Use Distilled Ire in Crafting (Supercedes all options below)", 2013, 2000)]
+		public ToggleNode UseDistilledIre { get; set; }
+
+		[Menu("Use Distilled Guilt in Crafting (Supercedes all options below)", 2014, 2000)]
+		public ToggleNode UseDistilledGuilt { get; set; }
+
+		[Menu("Use Distilled Greed in Crafting (Supercedes all options below)", 2015, 2000)]
+		public ToggleNode UseDistilledGreed { get; set; }
+
+		[Menu("Use Distilled Paranoia in Crafting (Supercedes all options below)", 2016, 2000)]
+		public ToggleNode UseDistilledParanoia { get; set; }
+
+		[Menu("Use Distilled Envy in Crafting", 2017, 2000)]
+		public ToggleNode UseDistilledEnvy { get; set; }		
+		
+
+		[Menu("Instill Button X Position [REQUIRED FOR DELIRIUM INSTILLING]", "X coordinate for clicking Instill button")]
+		public RangeNode<int> InstillButtonX { get; set; }
+
+		[Menu("Instill Button Y Position [REQUIRED FOR DELIRIUM INSTILLING]", "Y coordinate for clicking Instill button")]
+		public RangeNode<int> InstillButtonY { get; set; }
+
+		[Menu("Delirium Interface Map X Position [REQUIRED FOR DELIRIUM INSTILLING]", "X coordinate for clicking map in delirium interface")]
+		public RangeNode<int> DeliriumMapX { get; set; }
+
+		[Menu("Delirium Interface Map Y Position [REQUIRED FOR DELIRIUM INSTILLING]", "Y coordinate for clicking map in delirium interface")]
+		public RangeNode<int> DeliriumMapY { get; set; }
+
+		
+		[Menu("Inventory Key [DOES NOT CURRENTLY WORK, HARDCODED TO DEFAULT I]", "Key used to open inventory")]
+		public HotkeyNodeV2 InventoryKey { get; set; } = new HotkeyNodeV2(Keys.I);
+		
+		
+		
+		
 		
 		
 		
@@ -129,7 +192,7 @@ namespace MapBuddy
 		[Menu("Currency Management", 3000)]
 		public EmptyNode CurrencySettings { get; set; } = new EmptyNode();
 
-		[Menu("Auto-fill Currency from Stash **CAREFUL**", 3001, 3000)]
+		[Menu("Auto-fill Currency from Stash **CAREFUL THIS FEATURE IS JANKY AF. SELECT YOUR CURRENCY TAB FIRST**", 3001, 3000)]
 		public ToggleNode AutoFillCurrency { get; set; }
 		
 		[Menu("Scroll of Wisdom Stack Size", 3003, 3000)]
