@@ -59,10 +59,7 @@ namespace MapBuddy
 			UseDistilledGreed = new ToggleNode(false);
 			UseDistilledParanoia = new ToggleNode(false);
 			UseDistilledEnvy = new ToggleNode(false);
-			InstillButtonX = new RangeNode<int>(1283, 0, 3840);
-			InstillButtonY = new RangeNode<int>(1119, 0, 2160);
-			DeliriumMapX = new RangeNode<int>(1275, 0, 3840);
-			DeliriumMapY = new RangeNode<int>(583, 0, 2160);
+	
 						
 
 			// UI Settings
@@ -167,17 +164,6 @@ namespace MapBuddy
 		public ToggleNode UseDistilledEnvy { get; set; }		
 		
 
-		[Menu("Instill Button X Position [REQUIRED FOR DELIRIUM INSTILLING]", "X coordinate for clicking Instill button")]
-		public RangeNode<int> InstillButtonX { get; set; }
-
-		[Menu("Instill Button Y Position [REQUIRED FOR DELIRIUM INSTILLING]", "Y coordinate for clicking Instill button")]
-		public RangeNode<int> InstillButtonY { get; set; }
-
-		[Menu("Delirium Interface Map X Position [REQUIRED FOR DELIRIUM INSTILLING]", "X coordinate for clicking map in delirium interface")]
-		public RangeNode<int> DeliriumMapX { get; set; }
-
-		[Menu("Delirium Interface Map Y Position [REQUIRED FOR DELIRIUM INSTILLING]", "Y coordinate for clicking map in delirium interface")]
-		public RangeNode<int> DeliriumMapY { get; set; }
 
 		
 		[Menu("Inventory Key [DOES NOT CURRENTLY WORK, HARDCODED TO DEFAULT I]", "Key used to open inventory")]
