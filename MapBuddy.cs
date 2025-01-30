@@ -349,13 +349,15 @@ namespace MapBuddy
                 if (ImGui.Button("Clear Log"))
                     _debugLog.Clear();
 
-                ImGui.BeginChild("DebugLog", new Vector2(0, 0), ImGuiChildFlags.None);
+                ImGui.BeginChild("DebugLog", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Border); // Enables scrolling
+				
                 foreach (var line in _debugLog)
                     ImGui.TextWrapped(line);
-                if (_debugLog.Any())
+					
+                if (_debugLog.Any() && ImGui.GetScrollY() >= ImGui.GetScrollMaxY()) // Auto-scroll only when at bottom
                     ImGui.SetScrollHereY(1.0f);
+					
                 ImGui.EndChild();
-
                 ImGui.End();
             }
         }
@@ -1198,23 +1200,17 @@ namespace MapBuddy
 				// Get direct inventory reference
 				var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
 				var inventoryItems = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
+				
 
 				// Check for full stacks with direct inventory check
-				var hasFullStack = inventoryItems.Any(x => {
-					if (!x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
-						return false;
-						
-					var stackSize = x.Item.GetComponent<Stack>()?.Size ?? 0;
-					LogDebug($"Checking {currencyPath} stack size: {stackSize}/{maxStack}");
-					return stackSize >= maxStack;
-				});
+				// Count full stacks of this currency
+				var fullStacks = inventoryItems.Where(x => 
+					x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase) &&
+					(x.Item.GetComponent<Stack>()?.Size ?? 0) >= maxStack).ToList();
 				
-				LogDebug($"Has full stack of {currencyPath}: {hasFullStack}");
-					
+				LogDebug($"Found {fullStacks.Count} full stacks of {currencyPath}");
 				
-				
-				
-				if (!hasFullStack)
+				if (!fullStacks.Any())
 				{
 					var currencyInStash = GetItemWithBaseName(currencyPath, 
 						GameController.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
@@ -1238,58 +1234,31 @@ namespace MapBuddy
 					LogDebug($"Skipping {currencyPath} - Found full stack");
 				}
 				
-				 inventoryItems = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
-				 Thread.Sleep(250);				
 				
+				Thread.Sleep(250);				
 				
+				inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;  // Get fresh panel reference
+				inventoryItems = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;  // Get fresh items list
 				
-				LogDebug($"Checking for non-full stacks of {currencyPath}");
-				foreach (var item in inventoryItems)
-				{
-					var pathMatches = item.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
-					var stackSize = item.Item.GetComponent<Stack>()?.Size ?? 0;
-					LogDebug($"Item path: {item.Item.Path}, Matches: {pathMatches}, Stack size: {stackSize}/{maxStack}");
-				}
+				var stacksToReturn = inventoryItems.Where(x => {
+					if (!x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
+						return false;
 
-				var nonFullStacks = inventoryItems.Where(x => {
-					if (x?.Item?.Path == null) return false;
+					var stackSize = x.Item.GetComponent<Stack>()?.Size ?? 0;
 					
-					var stack = x.Item.GetComponent<Stack>();
-					var stackSize = stack?.Size ?? 0;
-					
-					var pathMatches = x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
-					LogDebug($"Comparing paths:");
-					LogDebug($"  Current: '{x.Item.Path}'");
-					LogDebug($"  Looking for: '{currencyPath}'");
-					LogDebug($"  Stack size: {stackSize}/{maxStack}");
-					LogDebug($"  Path match result: {pathMatches}");
-					
-					if (!pathMatches) return false;
+					// Keep track if this is a full stack we want to keep
+					if (stackSize >= maxStack && fullStacks.Count == 1)
+						return false;
 
-					// Changed this line - a stack is non-full only if it's more than 0 AND less than max
-					var isNonFull = stackSize > 0 && stackSize < maxStack;
-					LogDebug($"  Is non-full: {isNonFull} ({stackSize} {(isNonFull ? "<" : ">=")} {maxStack})");
-					
-					return isNonFull;
+					return true;
 				}).ToList();
 
-				if (nonFullStacks.Any())
+				// Return stacks to stash
+				foreach (var stack in stacksToReturn)
 				{
-					LogDebug($"Found {nonFullStacks.Count} non-full stacks to return to stash:");
-					foreach (var stack in nonFullStacks)
-					{
-						var size = stack.Item.GetComponent<Stack>()?.Size ?? 0;
-						LogDebug($"- Stack size: {size}/{maxStack}");
-					}
-				}
-				else
-				{
-					LogDebug($"No non-full stacks found for {currencyPath}");
-				}
+					var stackSize = stack.Item.GetComponent<Stack>()?.Size ?? 0;
+					LogDebug($"Returning stack of size {stackSize} to stash");
 					
-				foreach (var stack in nonFullStacks)
-				{
-					LogDebug($"Returning non-full stack (size: {stack.Item.GetComponent<Stack>()?.Size}) to stash");
 					var pos = stack.GetClientRect().Center;
 					Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
 					Thread.Sleep(Constants.INPUT_DELAY);
@@ -1298,6 +1267,7 @@ namespace MapBuddy
 					Input.KeyUp(Keys.LControlKey);
 					Thread.Sleep(Constants.CLICK_DELAY);
 				}
+				
 			}
 		}
 
