@@ -497,7 +497,7 @@ namespace MapBuddy
 			});
 
 
-			if (Settings.CraftJewels.Value)
+			if (Settings.ExaltJewels.Value)
 			{
 				var items = GetCurrentItems();
 				foreach (var item in items.Where(x => x.IsJewel && x.Rarity == ItemRarity.Rare))
@@ -540,14 +540,19 @@ namespace MapBuddy
 						
 						// Track our current map through exalting process
 						var currentItem = initialItem;
-						// var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
-						// LogDebug($"Processing map: {mapName}");
 						
 						
 						
 						
-						var mapName = currentItem.Item.Item.GetComponent<Base>()?.Name ?? "Unknown";
+						var mapName = currentItem.Item.Item.GetComponent<Mods>().UniqueName;
+						
+           
+
 						LogDebug($"Processing map: {mapName}");
+						
+						
+						//var mapName = currentItem.Item.Item.GetComponent<Base>()?.Name ?? "Unknown";
+						//LogDebug($"Processing map: {mapName}");
 						
 						
 						
@@ -576,14 +581,14 @@ namespace MapBuddy
 							
 							// Wait for item to update
 							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-							await Task.Delay(250); // Additional delay for game state to update
+							await Task.Delay(500); // Additional delay for game state to update
 							
-							// Get fresh inventory state and find our map by position
-							 var refreshedItems = GetCurrentItems();
+							// Get fresh inventory state and find our map by name
+							var refreshedItems = GetCurrentItems();
 							var updatedItem = refreshedItems.FirstOrDefault(x => 
 								x.IsMap && 
 								x.Rarity == ItemRarity.Rare && 
-								x.Item.Item.GetComponent<Base>().Name == mapName);
+								x.Item.Item.GetComponent<Mods>().UniqueName == mapName);
 							
 							if (updatedItem != null)
 							{
@@ -595,13 +600,13 @@ namespace MapBuddy
 							else
 							{
 								LogDebug("Could not find map after exalt - moving to next map");
-								break;
+								continue;
 							}
 						}
 						else
 						{
 							LogDebug("No more exalts available");
-							return; // Exit entire exalting process
+							break; // exit Exalt process
 						}
 
 						
@@ -616,50 +621,50 @@ namespace MapBuddy
 			
 			
 			
-			// For Delirium and Vaal:
-			if (Settings.UseDistilledEmotions.Value || Settings.VaalMapsAfterCrafting.Value)
+			// For Delirium
+			if (Settings.UseDistilledEmotions.Value)
 			{
 				var items = GetCurrentItems();
 				foreach (var initialItem in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
 				{
 					var currentItem = initialItem;
-					var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
-					LogDebug($"Processing map for Delirium/Vaal: {mapName}");
+					var mapName = currentItem.Item.Item.GetComponent<Mods>().UniqueName;
+					LogDebug($"Processing map for Delirium: {mapName}");
 
-					if (Settings.UseDistilledEmotions.Value)
-					{
-						ApplyDeliriumToRareMaps(new List<CraftableItem> { currentItem });
-						
-						// Find map after Delirium
-						var refreshedItems = GetCurrentItems();
-						currentItem = refreshedItems.FirstOrDefault(x => 
-							x.IsMap && 
-							x.Rarity == ItemRarity.Rare && 
-							x.Item.Item.GetComponent<Base>().Name == mapName);
-							
-						if (currentItem == null)
-						{
-							LogDebug($"Could not find {mapName} after Delirium - skipping Vaal");
-							continue;
-						}
-					}
-
-					if (Settings.VaalMapsAfterCrafting.Value && currentItem != null)
-					{
-						if (TryGetCurrency(VAAL_PATH, out var vaal))
-						{
-							LogDebug($"Applying Vaal to {mapName}");
-							ApplyCurrency(vaal, currentItem.Item);
-							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
-						}
-					}
+					ApplyDeliriumToRareMaps(new List<CraftableItem> { currentItem });
 				}
 			}
 			
 			
 			
 			
-			
+			if (Settings.VaalMapsAfterCrafting.Value)
+			{
+				var items = GetCurrentItems();
+				
+				
+				foreach (var initialItem in items.Where(x => x.IsMap && x.Rarity == ItemRarity.Rare))
+				{
+					
+					
+					var currentItem = initialItem;
+					var mapName = currentItem.Item.Item.GetComponent<Mods>().UniqueName;
+					
+					
+					
+					LogDebug($"Processing map for Vaal: {mapName}");
+					if (TryGetCurrency(VAAL_PATH, out var vaal))
+					{
+						LogDebug($"Applying Vaal to {mapName}");
+						ApplyCurrency(vaal, currentItem.Item);
+						Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+					}
+					
+				}
+					
+					
+					
+			}
 			
 			
 			
@@ -784,7 +789,7 @@ namespace MapBuddy
 		private void ProcessMagicItems(List<CraftableItem> items)
 		{
 			// Early exit if all relevant settings are disabled
-			if (!Settings.AugmentMagicItems.Value && !Settings.RegalMagicMaps.Value && !Settings.CraftJewels.Value)
+			if (!Settings.AugmentMagicItems.Value && !Settings.RegalMagicMaps.Value && !Settings.AugmentRegalJewels.Value)
 			{
 				LogDebug("All magic item processing is disabled in settings");
 				return;
@@ -816,7 +821,7 @@ namespace MapBuddy
 				{
 					
 					// Jewel handling
-					if (Settings.CraftJewels.Value && item.IsJewel) {
+					if (Settings.AugmentRegalJewels.Value && item.IsJewel) {
 						LogDebug("Found jewel with 1 explicit mod, applying Augmentation");
 						
 						if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
@@ -870,7 +875,7 @@ namespace MapBuddy
 				else if (explicitCount == 2 && !item.IsPrecursorTablet)
 				{
 					
-					if (Settings.CraftJewels.Value && item.IsJewel) {
+					if (Settings.AugmentRegalJewels.Value && item.IsJewel) {
 						LogDebug("Applying Regal Orb to Jewel with 2 explicit mods");
 						if (TryGetCurrency(REGAL_PATH, out var regal))
 						{
