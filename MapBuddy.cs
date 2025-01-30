@@ -1143,7 +1143,7 @@ namespace MapBuddy
 			_isFillingCurrency = true;
 			try
 			{
-				LogDebug($"Attempting to switch to currency tab: {Settings.CurrencyTabName}");
+				LogDebug($"Attempting to switch to currency tab: {Settings.CurrencyTabName.Value}");
 				if (!TryGetStashTabByName(Settings.CurrencyTabName.Value))  
 					return;
 
@@ -1158,10 +1158,28 @@ namespace MapBuddy
 				LogDebug("Currency fill process complete");
 			}
 		}
+		
+		private NormalInventoryItem GetNonFullStack(string path, IEnumerable<NormalInventoryItem> items, int maxStackSize)
+		{
+			try
+			{
+				return items
+					.Where(invItem => 
+						invItem.Item.Path.Equals(path, StringComparison.OrdinalIgnoreCase) &&
+						invItem.Item.GetComponent<Stack>()?.Size < maxStackSize)
+					.OrderBy(x => x.Item.GetComponent<Stack>()?.Size ?? 0)
+					.FirstOrDefault();
+			}
+			catch (Exception ex)
+			{
+				LogDebug($"Error finding non-full stack for {path}: {ex.Message}");
+				return null;
+			}
+		}
 
 		private void ProcessCurrencyStacks()
 		{
-			var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
+			
 			var stashElement = GameController.IngameState.IngameUi.StashElement;
 			
 			foreach (var kvp in GetMaxStackSizes())
@@ -1176,54 +1194,111 @@ namespace MapBuddy
 					continue;
 				}
 
-				var currencyInInventory = GetItemWithBaseName(currencyPath, 
-					inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems);
+				
+				// Get direct inventory reference
+				var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
+				var inventoryItems = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
+
+				// Check for full stacks with direct inventory check
+				var hasFullStack = inventoryItems.Any(x => {
+					if (!x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
+						return false;
+						
+					var stackSize = x.Item.GetComponent<Stack>()?.Size ?? 0;
+					LogDebug($"Checking {currencyPath} stack size: {stackSize}/{maxStack}");
+					return stackSize >= maxStack;
+				});
+				
+				LogDebug($"Has full stack of {currencyPath}: {hasFullStack}");
 					
-				// Skip if we already have enough of this currency
-				if (currencyInInventory != null)
+				
+				
+				
+				if (!hasFullStack)
 				{
-					var stack = currencyInInventory.Item.GetComponent<Stack>();
-					if (stack != null && stack.Size >= maxStack)
+					var currencyInStash = GetItemWithBaseName(currencyPath, 
+						GameController.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
+						
+					if (currencyInStash != null)
 					{
-						LogDebug($"Skipping {currencyPath} (already have {stack.Size} >= {maxStack})");
-						continue;
+						LogDebug($"Taking {currencyPath} from stash");
+						var pos = currencyInStash.GetClientRect().Center;
+						Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
+						Thread.Sleep(Constants.INPUT_DELAY);
+						Input.KeyDown(Keys.LControlKey);
+						Input.Click(MouseButtons.Left);
+						Input.KeyUp(Keys.LControlKey);
+						Thread.Sleep(Constants.CLICK_DELAY);
+					}
+					else {
+						LogDebug($"Skipping {currencyPath} - Stash is empty");
 					}
 				}
-
-				var currencyInStash = GetItemWithBaseName(currencyPath, 
-					stashElement.VisibleStash.VisibleInventoryItems);
-					
-				if (currencyInStash != null)
+				else {
+					LogDebug($"Skipping {currencyPath} - Found full stack");
+				}
+				
+				 inventoryItems = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
+				 Thread.Sleep(250);				
+				
+				
+				
+				LogDebug($"Checking for non-full stacks of {currencyPath}");
+				foreach (var item in inventoryItems)
 				{
-					LogDebug($"Taking {currencyPath} from stash (target: {maxStack})");
-					var pos = currencyInStash.GetClientRect().Center;
+					var pathMatches = item.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
+					var stackSize = item.Item.GetComponent<Stack>()?.Size ?? 0;
+					LogDebug($"Item path: {item.Item.Path}, Matches: {pathMatches}, Stack size: {stackSize}/{maxStack}");
+				}
+
+				var nonFullStacks = inventoryItems.Where(x => {
+					if (x?.Item?.Path == null) return false;
+					
+					var stack = x.Item.GetComponent<Stack>();
+					var stackSize = stack?.Size ?? 0;
+					
+					// Debug the exact strings being compared
+					LogDebug($"Comparing paths:");
+					LogDebug($"  Current: '{x.Item.Path}'");
+					LogDebug($"  Looking for: '{currencyPath}'");
+					LogDebug($"  Stack size: {stackSize}/{maxStack}");
+					
+					var pathMatches = x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
+					LogDebug($"  Path match result: {pathMatches}");
+					
+					if (!pathMatches) return false;
+
+					var isNonFull = stackSize < maxStack;
+					LogDebug($"  Is non-full: {isNonFull} ({stackSize} < {maxStack})");
+					
+					return isNonFull;
+				}).ToList();
+
+				if (nonFullStacks.Any())
+				{
+					LogDebug($"Found {nonFullStacks.Count} non-full stacks to return to stash:");
+					foreach (var stack in nonFullStacks)
+					{
+						var size = stack.Item.GetComponent<Stack>()?.Size ?? 0;
+						LogDebug($"- Stack size: {size}/{maxStack}");
+					}
+				}
+				else
+				{
+					LogDebug($"No non-full stacks found for {currencyPath}");
+				}
+					
+				foreach (var stack in nonFullStacks)
+				{
+					LogDebug($"Returning non-full stack (size: {stack.Item.GetComponent<Stack>()?.Size}) to stash");
+					var pos = stack.GetClientRect().Center;
 					Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
 					Thread.Sleep(Constants.INPUT_DELAY);
 					Input.KeyDown(Keys.LControlKey);
 					Input.Click(MouseButtons.Left);
 					Input.KeyUp(Keys.LControlKey);
 					Thread.Sleep(Constants.CLICK_DELAY);
-					
-					// Verification logic
-					int attempts = 0;
-					bool stackFound = false;
-					while (attempts < 10 && !stackFound)
-					{
-						Thread.Sleep(100);
-						var freshInventory = GameController.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
-						var newStacks = freshInventory.VisibleInventoryItems
-							.Count(x => x.Item.Path.Contains(currencyPath));
-						
-						LogDebug($"Attempt {attempts + 1}: Found {newStacks} stacks of {currencyPath}");
-						if (newStacks > 0)
-						{
-							stackFound = true;
-							LogDebug("Stack successfully taken from stash");
-						}
-						attempts++;
-					}
 				}
-			
 			}
 		}
 
