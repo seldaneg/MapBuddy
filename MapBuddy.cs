@@ -348,6 +348,16 @@ namespace MapBuddy
                 
                 if (ImGui.Button("Clear Log"))
                     _debugLog.Clear();
+				
+				
+				ImGui.SameLine();
+                if (ImGui.Button("Copy Log"))
+                {
+                    var logText = string.Join("\n", _debugLog);
+                    ImGui.SetClipboardText(logText);
+                    LogDebug("Debug log copied to clipboard.");
+                }
+
 
                 ImGui.BeginChild("DebugLog", ImGui.GetContentRegionAvail(), ImGuiChildFlags.Border); // Enables scrolling
 				
