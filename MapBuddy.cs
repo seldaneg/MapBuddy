@@ -52,7 +52,10 @@ namespace MapBuddy
 
 			if (baseComponent == null || modsComponent == null) return null;
 
+			var mapComponent = item.Item.GetComponent<Map>();
 			info.Name = baseComponent.Name;
+			
+			
 			info.Rarity = modsComponent.ItemRarity;
 			info.IsCorrupted = baseComponent.isCorrupted;
 			info.IsIdentified = modsComponent.Identified;
@@ -71,6 +74,11 @@ namespace MapBuddy
 				
 				//info.AllMods.Add((mod.Name, mod.DisplayName, !mod.DisplayName.StartsWith("of", StringComparison.OrdinalIgnoreCase)));
 				
+				 // Skip handling Delirium mod completely
+				if (mod.Name == "InstilledMapDelirium") 
+				{
+					continue;
+				}
 				
 				var isPrefix = !mod.DisplayName.StartsWith("of", StringComparison.OrdinalIgnoreCase);
 				info.Mods.Add((mod.Name, mod.DisplayName, isPrefix));
@@ -359,6 +367,7 @@ namespace MapBuddy
 			public bool IsWaystone { get; set; }
             public bool IsPrecursorTablet { get; set; }
             public ItemRarity Rarity { get; set; }
+			public bool IsJewel { get; set; } 
             public int AffixCount { get; set; }
         }
 		
@@ -487,7 +496,40 @@ namespace MapBuddy
 				ProcessMagicItems(items.Where(x => x.Rarity == ItemRarity.Magic).ToList());
 			});
 
-			// Exalting process (up to 3 times)
+
+			if (Settings.CraftJewels.Value)
+			{
+				var items = GetCurrentItems();
+				foreach (var item in items.Where(x => x.IsJewel && x.Rarity == ItemRarity.Rare))
+				{
+					var jewelName = item.Item.Item.GetComponent<Base>()?.Name ?? "Unknown";
+					LogDebug($"Processing rare jewel: {jewelName}");
+					
+					var prefixCount = await CountPrefixes(item.Item);
+					var suffixCount = await CountSuffixes(item.Item);
+					
+					// Skip if already has 4 mods
+					if (prefixCount + suffixCount >= 4)
+					{
+						LogDebug($"Skipping jewel - Already has {prefixCount + suffixCount} mods");
+						continue;
+					}
+					
+					if (TryGetCurrency(EXALT_PATH, out var exalt))
+					{
+						LogDebug($"Applying exalt to jewel: {jewelName}");
+						ApplyCurrency(exalt, item.Item);
+						Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+					}
+					else
+					{
+						LogDebug("No more exalts available");
+						break;
+					}
+				}
+			}
+
+			// Exalting map process (up to 3 times)
 			if (Settings.ExaltRareMaps.Value)
 			{
 				for (int i = 0; i < 3; i++)
@@ -498,8 +540,18 @@ namespace MapBuddy
 						
 						// Track our current map through exalting process
 						var currentItem = initialItem;
-						var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
+						// var mapName = currentItem.Item.Item.GetComponent<Base>().Name;
+						// LogDebug($"Processing map: {mapName}");
+						
+						
+						
+						
+						var mapName = currentItem.Item.Item.GetComponent<Base>()?.Name ?? "Unknown";
 						LogDebug($"Processing map: {mapName}");
+						
+						
+						
+						
 						
 						var prefixCount = await CountPrefixes(currentItem.Item);
 						var suffixCount = await CountSuffixes(currentItem.Item);
@@ -732,7 +784,7 @@ namespace MapBuddy
 		private void ProcessMagicItems(List<CraftableItem> items)
 		{
 			// Early exit if all relevant settings are disabled
-			if (!Settings.AugmentMagicItems.Value && !Settings.RegalMagicMaps.Value)
+			if (!Settings.AugmentMagicItems.Value && !Settings.RegalMagicMaps.Value && !Settings.CraftJewels.Value)
 			{
 				LogDebug("All magic item processing is disabled in settings");
 				return;
@@ -741,27 +793,59 @@ namespace MapBuddy
 			var processedIds = new HashSet<string>();
 			
 			// Get all magic maps and precursor tablets
-			var magicItems = items.Where(x => (x.IsMap || x.IsPrecursorTablet) && x.Rarity == ItemRarity.Magic).ToList();
+			var magicItems = items.Where(x => (x.IsMap || x.IsPrecursorTablet || x.IsJewel) && x.Rarity == ItemRarity.Magic).ToList();
 			
-			foreach (var item in magicItems)
+			foreach (var item in  magicItems)
 			{
 				var itemId = item.Item.GetHashCode().ToString();
 				if (processedIds.Contains(itemId)) continue;
 				processedIds.Add(itemId);
 
 				// Debug log the item details
-				LogDebug($"Processing item - Path: {item.Item.Item.Path}, IsPrecursor: {item.IsPrecursorTablet}, IsMap: {item.IsMap}");
+				LogDebug($"Processing item - Path: {item.Item.Item.Path}, IsPrecursor: {item.IsPrecursorTablet}, IsMap: {item.IsMap}, IsJewel: {item.IsJewel}");
 				
 				// Get explicit count of mods for better accuracy
 				var mods = item.Item.Item.GetComponent<Mods>();
 				var explicitCount = mods.ExplicitMods.Count();
 				LogDebug($"Explicit mod count: {explicitCount}");
 
+
+
 				// Handle items with 1 explicit mod
 				if (explicitCount == 1)
 				{
+					
+					// Jewel handling
+					if (Settings.CraftJewels.Value && item.IsJewel) {
+						LogDebug("Found jewel with 1 explicit mod, applying Augmentation");
+						
+						if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
+						
+						{
+							
+							ApplyCurrency(augment, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+							
+							LogDebug("Applying Regal Orb to Jewel");
+							if (TryGetCurrency(REGAL_PATH, out var regal))
+							{
+								ApplyCurrency(regal, item.Item);
+								Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+								
+								LogDebug("Applying Exalt Orb to Jewel");
+								if (TryGetCurrency(EXALT_PATH, out var exalt))
+								{
+									ApplyCurrency(exalt, item.Item);
+									Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+								}
+							}
+							
+						}
+						
+					}
+					
 					// Only augment if setting is enabled
-					if (Settings.AugmentMagicItems.Value)
+					else if (Settings.AugmentMagicItems.Value && !item.IsJewel)
 					{
 						LogDebug("Found item with 1 explicit mod, applying Augmentation");
 						if (TryGetCurrency(AUGMENTATION_PATH, out var augment))
@@ -783,13 +867,33 @@ namespace MapBuddy
 					}
 				}
 				// Handle items with 2 mods
-				else if (explicitCount == 2 && !item.IsPrecursorTablet && Settings.RegalMagicMaps.Value)
+				else if (explicitCount == 2 && !item.IsPrecursorTablet)
 				{
-					LogDebug("Applying Regal Orb to map with 2 explicit mods");
-					if (TryGetCurrency(REGAL_PATH, out var regal))
-					{
-						ApplyCurrency(regal, item.Item);
-						Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+					
+					if (Settings.CraftJewels.Value && item.IsJewel) {
+						LogDebug("Applying Regal Orb to Jewel with 2 explicit mods");
+						if (TryGetCurrency(REGAL_PATH, out var regal))
+						{
+							ApplyCurrency(regal, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+						}
+						
+						LogDebug("Applying Exalt Orb to Jewel");
+						if (TryGetCurrency(EXALT_PATH, out var exalt))
+						{
+							ApplyCurrency(exalt, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+						}
+						
+					}
+					
+					else if (Settings.RegalMagicMaps.Value && item.IsMap) {
+						LogDebug("Applying Regal Orb to map with 2 explicit mods");
+						if (TryGetCurrency(REGAL_PATH, out var regal))
+						{
+							ApplyCurrency(regal, item.Item);
+							Thread.Sleep(Constants.CLICK_DELAY * 2 + Settings.ExtraDelay * 3);
+						}
 					}
 				}
 			}
@@ -942,10 +1046,10 @@ namespace MapBuddy
 				}
 				
 				var path = baseItem.Path;
-				
-				// More specific path checking
 				var isMap = baseItem.HasComponent<Map>();
 				var isPrecursorTablet = path.StartsWith(PRECURSOR_PATH, StringComparison.OrdinalIgnoreCase);
+				var isJewel = path.Contains("/Jewels/"); // Add this check for jewels
+				
 				LogDebug($"Found item - Path: {path}, IsMap: {isMap}, IsPrecursor: {isPrecursorTablet}, Rarity: {mods.ItemRarity}");
 				craftableItems.Add(new CraftableItem
 				{
@@ -953,6 +1057,7 @@ namespace MapBuddy
 					IsMap = isMap,
 					IsWaystone = isMap, // Since these are the same
 					IsPrecursorTablet = isPrecursorTablet,
+					IsJewel = isJewel,
 					Rarity = mods.ItemRarity,
 					AffixCount = mods.ImplicitMods.Count() + mods.ExplicitMods.Count()
 				});
@@ -1113,41 +1218,7 @@ namespace MapBuddy
 						attempts++;
 					}
 				}
-				
-				
-				// Second phase: Check inventory and return non-full stacks
-				var currenciesInInventory = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems
-					.Where(x => x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
-					.ToList();
-
-				foreach (var currency in currenciesInInventory)
-				{
-					var stack = currency.Item.GetComponent<Stack>();
-					if (stack == null) continue;
-
-					if (stack.Size < maxStack)
-					{
-						LogDebug($"Returning non-full stack of {currencyPath} (size: {stack.Size})");
-						var currencyPos = currency.GetClientRect().Center;
-						Input.SetCursorPos(new Vector2(currencyPos.X + _windowOffset.X, currencyPos.Y + _windowOffset.Y));
-						Thread.Sleep(Constants.INPUT_DELAY);
-						Input.KeyDown(Keys.LControlKey);
-						Input.Click(MouseButtons.Left);
-						Input.KeyUp(Keys.LControlKey);
-						Thread.Sleep(Constants.CLICK_DELAY);
-					}
-					else
-					{
-						LogDebug($"Keeping full stack of {currencyPath} (size: {stack.Size})");
-					}
-				}
-
-				Thread.Sleep(100); // Small delay between different currency types
-				
-				
-				
-				
-				
+			
 			}
 		}
 
