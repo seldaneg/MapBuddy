@@ -982,14 +982,34 @@ namespace MapBuddy
 				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
 
 				   // Click Instill button
-				   Input.SetCursorPos(new Vector2(Settings.InstillButtonX.Value + _windowOffset.X, Settings.InstillButtonY.Value + _windowOffset.Y));
-				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
-				   Input.Click(MouseButtons.Left);
-				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+				   // Get the screen width and height
+				   //var screenWidth = GameController.Window.GetWindowRectangle().Width;
+				   //var screenHeight = GameController.Window.GetWindowRectangle().Height;
+				   var screenWidth = GameController.Game.IngameState.Camera.Width;
+				   var screenHeight = GameController.Game.IngameState.Camera.Height;
 
+					// Calculate the yfactor
+					var yfactor = screenHeight / 1080f;
+
+					// Calculate the X and Y positions dynamically
+					var xPos = (screenWidth - (660 * yfactor)) / 2;
+					var yPos = 840 * yfactor;
+
+					// Set the cursor position and perform the click
+					Input.SetCursorPos(new Vector2(xPos + _windowOffset.X, yPos + _windowOffset.Y));
+					Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+					Input.Click(MouseButtons.Left);
+					Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
+
+
+
+				   xPos = (screenWidth - (660 * yfactor)) / 2;
+				   yPos = 435 * yfactor;
+					
+					
 				   // Click map in delirium interface
 				   Input.KeyDown(Keys.LControlKey);
-				   Input.SetCursorPos(new Vector2(Settings.DeliriumMapX.Value + _windowOffset.X, Settings.DeliriumMapY.Value + _windowOffset.Y));
+				   Input.SetCursorPos(new Vector2(xPos + _windowOffset.X, yPos + _windowOffset.Y));
 				   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
 				   Input.Click(MouseButtons.Left);
 				   Input.KeyUp(Keys.LControlKey);
@@ -1211,6 +1231,16 @@ namespace MapBuddy
 				var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
 				var inventoryItems = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
 				
+				// var playerInvCount = GameController?.Game?.IngameState?.Data?.ServerData?.PlayerInventories?.Count;
+				// if (playerInvCount is null or 0) {
+					// LogDebug($"playerInvCount is null or 0.  What happened?");
+					// return;
+					
+				// }
+				
+				// var inventoryItemsTemp = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
+				// var inventoryItems = inventoryItemsTemp.ToList();
+				
 
 				// Check for full stacks with direct inventory check
 				// Count full stacks of this currency
@@ -1250,6 +1280,9 @@ namespace MapBuddy
 				inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;  // Get fresh panel reference
 				inventoryItems = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;  // Get fresh items list
 				
+				//inventoryItemsTemp = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
+				//inventoryItems = inventoryItemsTemp.ToList();
+				
 				var stacksToReturn = inventoryItems.Where(x => {
 					if (!x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
 						return false;
@@ -1280,6 +1313,131 @@ namespace MapBuddy
 				
 			}
 		}
+		
+		
+		
+		
+		
+		// private void ProcessCurrencyStacks()
+		// {
+			
+			// var stashElement = GameController.IngameState.IngameUi.StashElement;
+			
+			// foreach (var kvp in GetMaxStackSizes())
+			// {
+				// var currencyPath = kvp.Key;
+				// var maxStack = kvp.Value;
+				
+				// // Skip if stack size is set to 0 in settings
+				// if (maxStack == 0)
+				// {
+					// LogDebug($"Skipping {currencyPath} (disabled in settings: stack size 0)");
+					// continue;
+				// }
+
+				
+				// // Get direct inventory reference
+				// //var inventoryPanel = GameController.IngameState.IngameUi.InventoryPanel;
+				// // = inventoryPanel[InventoryIndex.PlayerInventory].VisibleInventoryItems;
+				
+				// var playerInvCount = GameController?.Game?.IngameState?.Data?.ServerData?.PlayerInventories?.Count;
+				// if (playerInvCount is null or 0) {
+					// LogDebug($"playerInvCount is null or 0.  What happened?");
+					// return;
+					
+				// }
+				
+				// var inventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
+				
+				
+
+				// // Check for full stacks with direct inventory check
+				// // Count full stacks of this currency
+				// var fullStacks = new List<Entity>();
+				// foreach (var item in inventoryItems)
+				// {
+					// if (item.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase) &&
+						// (item.Item.GetComponent<Stack>()?.Size ?? 0) >= maxStack)
+					// {
+						// fullStacks.Add(item);
+					// }
+				// }
+
+				// LogDebug($"Found {fullStacks.Count} full stacks of {currencyPath}");
+				
+				// if (fullStacks.Count == 0)
+				// {
+					// var currencyInStash = GetItemWithBaseName(currencyPath,
+						// GameController.IngameState.IngameUi.StashElement.VisibleStash.VisibleInventoryItems);
+
+					// if (currencyInStash != null)
+					// {
+						// LogDebug($"Taking {currencyPath} from stash");
+						// var pos = currencyInStash.GetClientRect().Center;
+						// Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
+						// Thread.Sleep(Constants.INPUT_DELAY);
+						// Input.KeyDown(Keys.LControlKey);
+						// Input.Click(MouseButtons.Left);
+						// Input.KeyUp(Keys.LControlKey);
+						// Thread.Sleep(Constants.CLICK_DELAY);
+					// }
+					// else
+					// {
+						// LogDebug($"Skipping {currencyPath} - Stash is empty");
+					// }
+				// }
+				// else
+				// {
+					// LogDebug($"Skipping {currencyPath} - Found full stack");
+				// }
+				
+				
+				// Thread.Sleep(250);				
+				
+				// // Refresh inventory items
+				// inventoryItems = GameController.Game.IngameState.Data.ServerData.PlayerInventories[0].Inventory;
+				
+				// var stacksToReturn = new List<Entity>();
+				
+				// foreach (var item in inventoryItems)
+				// {
+					// if (!item.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase))
+						// continue;
+
+					// var stackSize = item.Item.GetComponent<Stack>()?.Size ?? 0;
+
+					// // Keep track if this is a full stack we want to keep
+					// if (stackSize >= maxStack && fullStacks.Count == 1)
+						// continue;
+
+					// stacksToReturn.Add(item);
+				// }
+
+				// // Return stacks to stash
+				// foreach (var stack in stacksToReturn)
+				// {
+					// var stackSize = stack.Item.GetComponent<Stack>()?.Size ?? 0;
+					// LogDebug($"Returning stack of size {stackSize} to stash");
+
+					// var pos = stack.GetClientRect().Center;
+					// Input.SetCursorPos(new Vector2(pos.X + _windowOffset.X, pos.Y + _windowOffset.Y));
+					// Thread.Sleep(Constants.INPUT_DELAY);
+					// Input.KeyDown(Keys.LControlKey);
+					// Input.Click(MouseButtons.Left);
+					// Input.KeyUp(Keys.LControlKey);
+					// Thread.Sleep(Constants.CLICK_DELAY);
+				// }
+				
+			// }
+		// }
+		
+		
+		
+		
+		
+		
+		
+		
 
 		private void HandleItemThrow()
 		{
