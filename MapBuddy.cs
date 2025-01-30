@@ -1257,19 +1257,18 @@ namespace MapBuddy
 					var stack = x.Item.GetComponent<Stack>();
 					var stackSize = stack?.Size ?? 0;
 					
-					// Debug the exact strings being compared
+					var pathMatches = x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
 					LogDebug($"Comparing paths:");
 					LogDebug($"  Current: '{x.Item.Path}'");
 					LogDebug($"  Looking for: '{currencyPath}'");
 					LogDebug($"  Stack size: {stackSize}/{maxStack}");
-					
-					var pathMatches = x.Item.Path.Equals(currencyPath, StringComparison.OrdinalIgnoreCase);
 					LogDebug($"  Path match result: {pathMatches}");
 					
 					if (!pathMatches) return false;
 
-					var isNonFull = stackSize < maxStack;
-					LogDebug($"  Is non-full: {isNonFull} ({stackSize} < {maxStack})");
+					// Changed this line - a stack is non-full only if it's more than 0 AND less than max
+					var isNonFull = stackSize > 0 && stackSize < maxStack;
+					LogDebug($"  Is non-full: {isNonFull} ({stackSize} {(isNonFull ? "<" : ">=")} {maxStack})");
 					
 					return isNonFull;
 				}).ToList();
