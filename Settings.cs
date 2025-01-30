@@ -39,7 +39,8 @@ namespace MapBuddy
 			StopAt3Prefixes = new ToggleNode(false);
 			StopAt3Suffixes = new ToggleNode(false);
 			
-			CraftJewels = new ToggleNode(false);
+			AugmentRegalJewels = new ToggleNode(false);
+			ExaltJewels = new ToggleNode(false);
 			
 			
 			// Currency Management
@@ -182,10 +183,11 @@ namespace MapBuddy
 		[Menu("Inventory Key [DOES NOT CURRENTLY WORK, HARDCODED TO DEFAULT I]", "Key used to open inventory")]
 		public HotkeyNodeV2 InventoryKey { get; set; } = new HotkeyNodeV2(Keys.I);
 		
-		[Menu("Craft Jewels (Augment->Regal->Exalt)", 2018, 2000)]
-		public ToggleNode CraftJewels { get; set; } = new ToggleNode(false);
+		[Menu("Augment + Regal Jewels", 2018, 2000)]
+		public ToggleNode AugmentRegalJewels { get; set; } = new ToggleNode(false);
 		
-		
+		[Menu("Exalt Jewels with 3 Mods)", 2019, 2000)]
+		public ToggleNode ExaltJewels { get; set; } = new ToggleNode(false);
 		
 		
 		
