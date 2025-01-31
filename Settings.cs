@@ -16,6 +16,7 @@ namespace MapBuddy
 			HotKey = new HotkeyNodeV2(Keys.F2);
 			ExtraDelay = new RangeNode<int>(50, 30, 200);
 			ThrowHotkey = new HotkeyNodeV2(Keys.Oemtilde); 
+			StopCraftingHotkey = new HotkeyNodeV2(Keys.F4); 
 			
 			// Identification settings
 			IdentifyAll = new ToggleNode(false);
@@ -78,6 +79,10 @@ namespace MapBuddy
 
 		[Menu("Identification + Crafting + Currency Management Hotkey")]
 		public HotkeyNodeV2 HotKey { get; set; }
+		
+		[Menu("Stop All Crafting Hotkey")]
+		public HotkeyNodeV2 StopCraftingHotkey { get; set; }
+		
 
 		[Menu("Throw Item Hotkey")]
 		public HotkeyNodeV2 ThrowHotkey { get; set; }
