@@ -952,11 +952,18 @@ namespace MapBuddy
 		   foreach (var item in rareMaps)
 		   {
 			   var mods = item.Item.Item.GetComponent<Mods>();
-			   if (mods.ItemMods.Any(x => x.Name == "InstilledMapDelirium"))
-			   {
-				   LogDebug("Map already has Delirium mod, skipping");
-				   continue;
-			   }
+			   // Count how many Delirium mods the map has
+				var deliriumModCount = mods.ItemMods.Count(x => x.Name == "InstilledMapDelirium");
+				
+				if (deliriumModCount >= 3)
+				{
+					LogDebug("Map already has maximum (3) Delirium mods, skipping");
+					continue;
+				}
+				
+				// Calculate how many more Delirium mods we need to apply
+				var modsToApply = 3 - deliriumModCount;
+				LogDebug($"Map has {deliriumModCount} Delirium mods, needs {modsToApply} more");
 
 			   // Select emotion type based on settings priority
 			   string emotionPath = null;
@@ -992,7 +999,7 @@ namespace MapBuddy
 			   
 				   // Control-click emotion 3 times
 				   Input.KeyDown(Keys.LControlKey);
-				   for (int i = 0; i < 3; i++)
+				   for (int i = 0; i < modsToApply; i++)
 				   {
 					   Input.Click(MouseButtons.Left);
 					   Thread.Sleep(Constants.INPUT_DELAY * 2 + Settings.ExtraDelay * 3);
