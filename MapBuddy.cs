@@ -104,6 +104,7 @@ namespace MapBuddy
         private DateTime _lastIdentifyAttempt = DateTime.MinValue;
         private DateTime _lastCraftAttempt = DateTime.MinValue;
         private const int MinTimeBetweenActions = 500;
+		private bool _stopCrafting = false;   // Tracks if crafting should be interrupted
 
         // Logging
         private List<string> _debugLog = new();
@@ -177,6 +178,14 @@ namespace MapBuddy
 
         public override void Tick()
         {
+			// Add this check to handle the hotkey
+			if (Settings.StopCraftingHotkey.PressedOnce())
+			{
+				_stopCrafting = true;
+				LogDebug("Crafting interruption requested by hotkey.");
+			}
+
+			
             if (!GameController.Window.IsForeground())
             {
                 _isIdentifying = false;
@@ -501,6 +510,7 @@ namespace MapBuddy
 
         private async Task CraftItems()
 		{
+			_stopCrafting = false;
 			// Initial crafting of normal/magic items
 			RefreshAndCraftItems((items) => {
 				ProcessNormalItems(items.Where(x => x.Rarity == ItemRarity.Normal).ToList());
@@ -678,6 +688,8 @@ namespace MapBuddy
 					
 			}
 			
+			
+			_stopCrafting = false;
 			
 			
 		}
@@ -1539,10 +1551,17 @@ namespace MapBuddy
             var playerInventory = inventoryPanel[InventoryIndex.PlayerInventory];
             
             currency = GetItemWithBaseName(path, playerInventory.VisibleInventoryItems);
+			
+			if (_stopCrafting)
+			{
+				LogDebug("Crafting stopped: Currency not detected or user requested to stop crafting.");
+				return false;
+			}
             
             if (currency == null)
             {
                 LogDebug($"Currency not found: {path}");
+				_stopCrafting = true;
                 return false;
             }
             
