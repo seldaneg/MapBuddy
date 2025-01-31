@@ -232,6 +232,11 @@ namespace MapBuddy
 			}
 		}
 		
+		private bool IsInTownOrHideout()
+		{
+			var area = GameController.Area.CurrentArea;
+			return area.IsTown || area.IsHideout;
+		}
 		
 		private async void ProcessHotkeyAction()
 		{
@@ -550,6 +555,14 @@ namespace MapBuddy
 					}
 				}
 			}
+			
+			
+			// only allow map crafting in town or in hideout
+			if (!IsInTownOrHideout()) {
+				LogDebug("Stopping Map Crafting as player is not in Town or Hideout");
+				_stopCrafting = true;
+			}
+			
 
 			// Exalting map process (up to 3 times)
 			if (Settings.ExaltRareMaps.Value)
